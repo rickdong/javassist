@@ -76,6 +76,13 @@ public abstract class TypeData {
     public abstract boolean eq(TypeData d);
 
     public abstract String getName();
+    @Override
+    public String toString() {
+        if (is2WordType()) {
+            return getName() + " [2-word]";
+        }
+        return getName();
+    }
     public abstract void setType(String s, ClassPool cp) throws BadBytecode;
 
     // depth-first search

@@ -294,7 +294,7 @@ public class MapMaker extends Tracer {
             TypeData t = validateTypeData(srcTypes, n, i);
             destTypes[i] = t.join();
             if (t != TOP)
-            	k = i + 1;		// t might be long or double.
+            	k = k + 1;		// t might be long or double.
         }
 
         return k + 1;
@@ -498,7 +498,7 @@ public class MapMaker extends Tracer {
             TypeData td = types[offset + i];
             tags[j] = td.getTypeTag();
             data[j] = td.getTypeData(cp);
-            if (td.is2WordType())
+            if (td.is2WordType() && td.getTypeTag() != TypeTag.TOP.getTypeTag())
                 i++;
 
             j++;
@@ -540,7 +540,7 @@ public class MapMaker extends Tracer {
         while (offset < len) {
             TypeData td = types[offset++];
             num++;
-            if (td.is2WordType())
+            if (td.is2WordType() && td.getTypeTag() != TypeTag.TOP.getTypeTag())
                 offset++;
         }
 
