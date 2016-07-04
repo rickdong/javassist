@@ -638,7 +638,10 @@ public class MemberCodeGen extends CodeGen {
                 else
                     popTarget = true;
             }
-
+            // rdong fix invoking a public static method declared on a non-accessible class via an accessible subclass
+            if (!Modifier.isPublic(declClass.getModifiers())) {
+                declClass = targetClass;
+            }
             bytecode.addInvokestatic(declClass, mname, desc);
         }
         else if (isSpecial)    // if (isSpecial && notStatic(acc))
