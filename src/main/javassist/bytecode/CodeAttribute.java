@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -45,7 +46,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
     private int maxStack;
     private int maxLocals;
     private ExceptionTable exceptions;
-    private ArrayList attributes;
+    private Map attributes;
 
     /**
      * Constructs a <code>Code_attribute</code>.
@@ -64,7 +65,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
         maxLocals = locals;
         info = code;
         exceptions = etable;
-        attributes = new ArrayList();
+        attributes = new LinkedHashMap();
     }
 
     /**
@@ -84,12 +85,12 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
         maxStack = src.getMaxStack();
         maxLocals = src.getMaxLocals();
         exceptions = src.getExceptionTable().copy(cp, classnames);
-        attributes = new ArrayList();
-        List src_attr = src.getAttributes();
-        int num = src_attr.size();
-        for (int i = 0; i < num; ++i) {
-            AttributeInfo ai = (AttributeInfo)src_attr.get(i);
-            attributes.add(ai.copy(cp, classnames));
+        attributes = new LinkedHashMap();
+        Map src_attr = src.getAttributes();
+        for (Object o : src_attr.values()) {
+            AttributeInfo ai = (AttributeInfo)o;
+            AttributeInfo c = ai.copy(cp, classnames);
+            attributes.put(c.getName(), c);
         }
 
         info = src.copyCode(cp, classnames, exceptions, this);
@@ -110,10 +111,12 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
 
         exceptions = new ExceptionTable(cp, in);
 
-        attributes = new ArrayList();
+        attributes = new LinkedHashMap();
         int num = in.readUnsignedShort();
-        for (int i = 0; i < num; ++i)
-            attributes.add(AttributeInfo.read(cp, in));
+        for (int i = 0; i < num; ++i){
+        	AttributeInfo c = AttributeInfo.read(cp, in);
+        	attributes.put(c.getName(), c);
+        }
     }
 
     /**
@@ -294,7 +297,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
      *
      * @see AttributeInfo
      */
-    public List getAttributes() { return attributes; }
+    public Map getAttributes() { return attributes; }
 
     /**
      * Returns the attribute with the specified name.
@@ -318,7 +321,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
     public void setAttribute(StackMapTable smt) {
         AttributeInfo.remove(attributes, StackMapTable.tag);
         if (smt != null)
-            attributes.add(smt);
+            attributes.put(smt.getName(), smt);
     }
 
     /**
@@ -333,7 +336,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
     public void setAttribute(StackMap sm) {
         AttributeInfo.remove(attributes, StackMap.tag);
         if (sm != null)
-            attributes.add(sm);
+            attributes.put(sm.getName(), sm);
     }
 
     /**

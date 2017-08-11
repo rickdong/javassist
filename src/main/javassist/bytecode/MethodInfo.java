@@ -20,6 +20,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -59,7 +60,7 @@ public class MethodInfo {
     int name;
     String cachedName;
     int descriptor;
-    ArrayList attribute; // may be null
+    Map attribute; // may be null
 
     /**
      * If this value is true, Javassist maintains a <code>StackMap</code> attribute
@@ -157,50 +158,50 @@ public class MethodInfo {
     }
 
     void prune(ConstPool cp) {
-        ArrayList newAttributes = new ArrayList();
+        Map newAttributes = new LinkedHashMap();
 
         AttributeInfo invisibleAnnotations
             = getAttribute(AnnotationsAttribute.invisibleTag);
         if (invisibleAnnotations != null) {
             invisibleAnnotations = invisibleAnnotations.copy(cp, null);
-            newAttributes.add(invisibleAnnotations);
+            newAttributes.put(invisibleAnnotations.getName(), invisibleAnnotations);
         }
 
         AttributeInfo visibleAnnotations
             = getAttribute(AnnotationsAttribute.visibleTag);
         if (visibleAnnotations != null) {
             visibleAnnotations = visibleAnnotations.copy(cp, null);
-            newAttributes.add(visibleAnnotations);
+            newAttributes.put(visibleAnnotations.getName(), visibleAnnotations);
         }
 
         AttributeInfo parameterInvisibleAnnotations
             = getAttribute(ParameterAnnotationsAttribute.invisibleTag);
         if (parameterInvisibleAnnotations != null) {
             parameterInvisibleAnnotations = parameterInvisibleAnnotations.copy(cp, null);
-            newAttributes.add(parameterInvisibleAnnotations);
+            newAttributes.put(parameterInvisibleAnnotations.getName(), parameterInvisibleAnnotations);
         }
 
         AttributeInfo parameterVisibleAnnotations
             = getAttribute(ParameterAnnotationsAttribute.visibleTag);
         if (parameterVisibleAnnotations != null) {
             parameterVisibleAnnotations = parameterVisibleAnnotations.copy(cp, null);
-            newAttributes.add(parameterVisibleAnnotations);
+            newAttributes.put(parameterVisibleAnnotations.getName(), parameterVisibleAnnotations);
         }
 
         AnnotationDefaultAttribute defaultAttribute
              = (AnnotationDefaultAttribute) getAttribute(AnnotationDefaultAttribute.tag);
         if (defaultAttribute != null)
-            newAttributes.add(defaultAttribute);
+            newAttributes.put(defaultAttribute.getName(), defaultAttribute);
 
         ExceptionsAttribute ea = getExceptionsAttribute();
         if (ea != null)
-            newAttributes.add(ea);
+            newAttributes.put(ea.getName(), ea);
 
         AttributeInfo signature 
             = getAttribute(SignatureAttribute.tag);
         if (signature != null) {
             signature = signature.copy(cp, null);
-            newAttributes.add(signature);
+            newAttributes.put(signature.getName(), signature);
         }
         
         attribute = newAttributes;
@@ -304,9 +305,9 @@ public class MethodInfo {
      * @return a list of <code>AttributeInfo</code> objects.
      * @see AttributeInfo
      */
-    public List getAttributes() {
+    public Map getAttributes() {
         if (attribute == null)
-            attribute = new ArrayList();
+            attribute = new LinkedHashMap();
 
         return attribute;
     }
@@ -331,10 +332,10 @@ public class MethodInfo {
      */
     public void addAttribute(AttributeInfo info) {
         if (attribute == null)
-            attribute = new ArrayList();
+            attribute = new LinkedHashMap();
 
         AttributeInfo.remove(attribute, info.getName());
-        attribute.add(info);
+        attribute.put(info.getName(), info);
     }
 
     /**
@@ -375,9 +376,9 @@ public class MethodInfo {
     public void setExceptionsAttribute(ExceptionsAttribute cattr) {
         removeExceptionsAttribute();
         if (attribute == null)
-            attribute = new ArrayList();
+            attribute = new LinkedHashMap();
 
-        attribute.add(cattr);
+        attribute.put(cattr.getName(), cattr);
     }
 
     /**
@@ -397,9 +398,9 @@ public class MethodInfo {
     public void setCodeAttribute(CodeAttribute cattr) {
         removeCodeAttribute();
         if (attribute == null)
-            attribute = new ArrayList();
+            attribute = new LinkedHashMap();
 
-        attribute.add(cattr);
+        attribute.put(cattr.getName(), cattr);
     }
 
     /**
@@ -531,14 +532,18 @@ public class MethodInfo {
         String desc2 = Descriptor.rename(desc, classnames);
         descriptor = destCp.addUtf8Info(desc2);
 
-        attribute = new ArrayList();
+        attribute = new LinkedHashMap();
         ExceptionsAttribute eattr = src.getExceptionsAttribute();
-        if (eattr != null)
-            attribute.add(eattr.copy(destCp, classnames));
+        if (eattr != null){
+        	AttributeInfo c = eattr.copy(destCp, classnames);
+            attribute.put(c.getName(), c);
+        }
 
         CodeAttribute cattr = src.getCodeAttribute();
-        if (cattr != null)
-            attribute.add(cattr.copy(destCp, classnames));
+        if (cattr != null){
+        	AttributeInfo c = cattr.copy(destCp, classnames);
+            attribute.put(c.getName(), c);
+        }
     }
 
     private void read(DataInputStream in) throws IOException {
@@ -546,9 +551,11 @@ public class MethodInfo {
         name = in.readUnsignedShort();
         descriptor = in.readUnsignedShort();
         int n = in.readUnsignedShort();
-        attribute = new ArrayList();
-        for (int i = 0; i < n; ++i)
-            attribute.add(AttributeInfo.read(constPool, in));
+        attribute = new LinkedHashMap();
+        for (int i = 0; i < n; ++i){
+        	AttributeInfo c = AttributeInfo.read(constPool, in);
+            attribute.put(c.getName(), c);
+        }
     }
 
     void write(DataOutputStream out) throws IOException {

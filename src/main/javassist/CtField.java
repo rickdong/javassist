@@ -16,6 +16,8 @@
 
 package javassist;
 
+import java.util.Iterator;
+
 import javassist.bytecode.*;
 import javassist.compiler.Javac;
 import javassist.compiler.SymbolTable;
@@ -83,8 +85,8 @@ public class CtField extends CtMember {
     {
         this(src.fieldInfo.getDescriptor(), src.fieldInfo.getName(),
              declaring);
-        java.util.ListIterator iterator
-            = src.fieldInfo.getAttributes().listIterator();
+        Iterator iterator
+            = src.fieldInfo.getAttributes().values().iterator();
         FieldInfo fi = fieldInfo;
         fi.setAccessFlags(src.fieldInfo.getAccessFlags());
         ConstPool cp = fi.getConstPool();

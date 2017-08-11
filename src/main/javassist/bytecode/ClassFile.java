@@ -20,6 +20,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -64,7 +65,7 @@ public final class ClassFile {
     int[] interfaces;
     ArrayList fields;
     ArrayList methods;
-    ArrayList attributes;
+    Map attributes;
     String thisclassname; // not JVM-internal name
     String[] cachedInterfaces;
     String cachedSuperclass;
@@ -174,9 +175,10 @@ public final class ClassFile {
         methods = new ArrayList();
         thisclassname = classname;
 
-        attributes = new ArrayList();
-        attributes.add(new SourceFileAttribute(constPool,
-                getSourcefileName(thisclassname)));
+        attributes = new LinkedHashMap();
+        SourceFileAttribute sa = new SourceFileAttribute(constPool,
+                getSourcefileName(thisclassname));
+        attributes.put(sa.getName(), sa);
     }
 
     private void initSuperclass(String superclass) {
@@ -248,26 +250,26 @@ public final class ClassFile {
      */
     public void prune() {
         ConstPool cp = compact0();
-        ArrayList newAttributes = new ArrayList();
+        Map newAttributes = new LinkedHashMap();
         AttributeInfo invisibleAnnotations
             = getAttribute(AnnotationsAttribute.invisibleTag);
         if (invisibleAnnotations != null) {
             invisibleAnnotations = invisibleAnnotations.copy(cp, null);
-            newAttributes.add(invisibleAnnotations);
+            newAttributes.put(invisibleAnnotations.getName(), invisibleAnnotations);
         }
 
         AttributeInfo visibleAnnotations
             = getAttribute(AnnotationsAttribute.visibleTag);
         if (visibleAnnotations != null) {
             visibleAnnotations = visibleAnnotations.copy(cp, null);
-            newAttributes.add(visibleAnnotations);
+            newAttributes.put(visibleAnnotations.getName(), visibleAnnotations);
         }
 
         AttributeInfo signature 
             = getAttribute(SignatureAttribute.tag);
         if (signature != null) {
             signature = signature.copy(cp, null);
-            newAttributes.add(signature);
+            newAttributes.put(signature.getName(), signature);
         }
         
         ArrayList list = methods;
@@ -747,7 +749,7 @@ public final class ClassFile {
      * @return a list of <code>AttributeInfo</code> objects.
      * @see AttributeInfo
      */
-    public List getAttributes() {
+    public Map getAttributes() {
         return attributes;
     }
 
@@ -760,15 +762,8 @@ public final class ClassFile {
      * @see #getAttributes()
      */
     public AttributeInfo getAttribute(String name) {
-        ArrayList list = attributes;
-        int n = list.size();
-        for (int i = 0; i < n; ++i) {
-            AttributeInfo ai = (AttributeInfo)list.get(i);
-            if (ai.getName().equals(name))
-                return ai;
-        }
-
-        return null;
+        Map list = attributes;
+        return (AttributeInfo) list.get(name);
     }
 
     /**
@@ -779,7 +774,7 @@ public final class ClassFile {
      */
     public void addAttribute(AttributeInfo info) {
         AttributeInfo.remove(attributes, info.getName());
-        attributes.add(info);
+        attributes.put(info.getName(), info);
     }
 
     /**
@@ -829,7 +824,7 @@ public final class ClassFile {
         for (i = 0; i < n; ++i)
             addMethod2(new MethodInfo(cp, in));
 
-        attributes = new ArrayList();
+        attributes = new LinkedHashMap();
         n = in.readUnsignedShort();
         for (i = 0; i < n; ++i)
             addAttribute(AttributeInfo.read(cp, in));

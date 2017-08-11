@@ -19,6 +19,7 @@ package javassist.bytecode;
 import java.io.PrintWriter;
 import javassist.Modifier;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A utility class for priting the contents of a class file.
@@ -90,7 +91,7 @@ public class ClassFilePrinter {
         printAttributes(cf.getAttributes(), out, 'c');
     }
 
-    static void printAttributes(List list, PrintWriter out, char kind) {
+    static void printAttributes(Map list, PrintWriter out, char kind) {
         if (list == null)
             return;
 

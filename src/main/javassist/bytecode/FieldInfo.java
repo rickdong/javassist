@@ -20,7 +20,9 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 /**
  * <code>field_info</code> structure.
@@ -43,7 +45,7 @@ public final class FieldInfo {
     String cachedName;
     String cachedType;
     int descriptor;
-    ArrayList attribute;       // may be null.
+    Map attribute;       // may be null.
 
     private FieldInfo(ConstPool cp) {
         constPool = cp;
@@ -95,32 +97,33 @@ public final class FieldInfo {
     }
 
     void prune(ConstPool cp) {
-        ArrayList newAttributes = new ArrayList();
+        Map newAttributes = new LinkedHashMap();
         AttributeInfo invisibleAnnotations
             = getAttribute(AnnotationsAttribute.invisibleTag);
         if (invisibleAnnotations != null) {
             invisibleAnnotations = invisibleAnnotations.copy(cp, null);
-            newAttributes.add(invisibleAnnotations);
+            newAttributes.put(invisibleAnnotations.getName(), invisibleAnnotations);
          }
 
         AttributeInfo visibleAnnotations
             = getAttribute(AnnotationsAttribute.visibleTag);
         if (visibleAnnotations != null) {
             visibleAnnotations = visibleAnnotations.copy(cp, null);
-            newAttributes.add(visibleAnnotations);
+            newAttributes.put(visibleAnnotations.getName(), visibleAnnotations);
         }
 
         AttributeInfo signature 
             = getAttribute(SignatureAttribute.tag);
         if (signature != null) {
             signature = signature.copy(cp, null);
-            newAttributes.add(signature);
+            newAttributes.put(signature.getName(), signature);
         }
         
         int index = getConstantValue();
         if (index != 0) {
             index = constPool.copy(index, cp, null);
-            newAttributes.add(new ConstantAttribute(cp, index));
+            ConstantAttribute a = new ConstantAttribute(cp, index);
+            newAttributes.put(a.getName(), a);
         }
 
         attribute = newAttributes;
@@ -220,9 +223,9 @@ public final class FieldInfo {
      * @return a list of <code>AttributeInfo</code> objects.
      * @see AttributeInfo
      */
-    public List getAttributes() {
+    public Map getAttributes() {
         if (attribute == null)
-            attribute = new ArrayList();
+            attribute = new LinkedHashMap();
 
         return attribute;
     }
@@ -246,10 +249,10 @@ public final class FieldInfo {
      */
     public void addAttribute(AttributeInfo info) {
         if (attribute == null)
-            attribute = new ArrayList();
+            attribute = new LinkedHashMap();
 
         AttributeInfo.remove(attribute, info.getName());
-        attribute.add(info);
+        attribute.put(info.getName(), info);
     }
 
     private void read(DataInputStream in) throws IOException {
@@ -257,9 +260,11 @@ public final class FieldInfo {
         name = in.readUnsignedShort();
         descriptor = in.readUnsignedShort();
         int n = in.readUnsignedShort();
-        attribute = new ArrayList();
-        for (int i = 0; i < n; ++i)
-            attribute.add(AttributeInfo.read(constPool, in));
+        attribute = new LinkedHashMap();
+        for (int i = 0; i < n; ++i) {
+        	AttributeInfo a = AttributeInfo.read(constPool, in);
+            attribute.put(a.getName(), a);
+        }
     }
 
     void write(DataOutputStream out) throws IOException {

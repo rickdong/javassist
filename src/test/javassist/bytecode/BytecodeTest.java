@@ -339,7 +339,7 @@ public class BytecodeTest extends TestCase {
         ConstPool cp2 = ca2.getConstPool();
         LocalVariableAttribute ainfo2
             = (LocalVariableAttribute)ainfo.copy(cp2, null);
-        ca2.getAttributes().add(ainfo2);
+        ca2.getAttributes().put(ainfo2.getName(), ainfo2);
         cc2.addMethod(m2);
         cc2.writeFile();
         print("**** local variable table ***");
