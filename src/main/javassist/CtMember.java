@@ -17,8 +17,8 @@
 package javassist;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -58,9 +58,9 @@ public abstract class CtMember {
         public void setGenericSignature(String sig) {}
 
         private final List<CtConstructor> cons = new ArrayList<CtConstructor>();
-        private final Map<String, List<CtMethod>> methods = new LinkedHashMap<String, List<CtMethod>>();
+        private final Map<String, List<CtMethod>> methods = new HashMap<String, List<CtMethod>>();
         private final List<CtMethod> methods2 = new ArrayList<CtMethod>();
-        private final Map<String, CtField> fields = new LinkedHashMap<String, CtField>();
+        private final Map<String, CtField> fields = new HashMap<String, CtField>();
 
         Cache(CtClassType decl) {
             super(decl);
@@ -105,11 +105,10 @@ public abstract class CtMember {
         }
 
         
-        void addMethod(CtMember method) {
-            CtMethod mth = (CtMethod) method;
-            mth.getMethodInfo2().addChangeListener(this);
-            CollectionUtils.addToKeyedList(mth.getName() + " " + method.getSignature(), mth, methods);
-            methods2.add(mth);
+        void addMethod(CtMethod method) {
+            method.getMethodInfo2().addChangeListener(this);
+            CollectionUtils.addToKeyedList(method.getName() + " " + method.getSignature(), method, methods);
+            methods2.add(method);
         }
 
         CtMethod[] getMethods() {
@@ -123,8 +122,8 @@ public abstract class CtMember {
         
         /* Both constructors and a class initializer.
          */
-        void addConstructor(CtMember cons) {
-            this.cons.add((CtConstructor) cons);
+        void addConstructor(CtConstructor cons) {
+            this.cons.add(cons);
         }
         
         CtConstructor[] getConstructors(){
@@ -174,10 +173,9 @@ public abstract class CtMember {
                     && cons.isConstructor();
         }
 
-        void addField(CtMember field) {
-            CtField f = (CtField) field;
-            fields.put(f.getName(), f);
-            f.getFieldInfo2().addChangeListener(this);
+        void addField(CtField field) {
+            fields.put(field.getName(), field);
+            field.getFieldInfo2().addChangeListener(this);
         }
         
         CtField[] getFields(){

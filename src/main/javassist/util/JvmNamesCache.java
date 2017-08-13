@@ -9,9 +9,9 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class JvmNamesCache {
 
-    private static final ConcurrentMap<String, String> JAVA_TO_JVM_NAMES = new ConcurrentHashMap<String, String>();
+    private static final ConcurrentMap<String, String> JAVA_TO_JVM_NAMES = new ConcurrentHashMap<String, String>(100000);
 
-    private static final ConcurrentMap<String, String> JVM_TO_JAVA_NAMES = new ConcurrentHashMap<String, String>();
+    private static final ConcurrentMap<String, String> JVM_TO_JAVA_NAMES = new ConcurrentHashMap<String, String>(100000);
 
     public static String javaToJvmName(String classname) {
         String name = JAVA_TO_JVM_NAMES.get(classname);

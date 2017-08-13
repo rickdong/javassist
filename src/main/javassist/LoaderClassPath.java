@@ -16,8 +16,11 @@
 
 package javassist;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import javassist.util.JvmNamesCache;
 
@@ -66,12 +69,12 @@ public class LoaderClassPath implements ClassPath {
      * on the class loader.
      */
     public InputStream openClassfile(String classname) {
-        String cname = JvmNamesCache.javaToJvmName(classname) + ".class";
-        ClassLoader cl = (ClassLoader)clref.get();
-        if (cl == null)
-            return null;        // not found
-        else
-            return cl.getResourceAsStream(cname);
+        URL url = find(classname);
+        try {
+            return url != null ? url.openStream() : null;
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     /**
@@ -82,13 +85,28 @@ public class LoaderClassPath implements ClassPath {
      * @return null if the class file could not be found. 
      */
     public URL find(String classname) {
+        URL url = CACHE.get(classname);
+        if (url != null) {
+            return url;
+        }
         String cname = JvmNamesCache.javaToJvmName(classname) + ".class";
-        ClassLoader cl = (ClassLoader)clref.get();
-        if (cl == null)
-            return null;        // not found
-        else
-            return cl.getResource(cname);
+        ClassLoader cl = (ClassLoader) clref.get();
+        if (cl == null) {
+            return null; // not found
+        }
+        else {
+            url = cl.getResource(cname);
+            if (url != null) {
+                URL prev = CACHE.putIfAbsent(classname, url);
+                if (prev != null) {
+                    url = prev;
+                }
+            }
+            return url;
+        }
     }
+    
+    private static final ConcurrentMap<String, URL> CACHE = new ConcurrentHashMap<String, URL>();
 
     /**
      * Closes this class path.

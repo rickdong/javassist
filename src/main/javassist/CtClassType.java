@@ -28,7 +28,6 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
-import java.util.List;
 import java.util.Set;
 
 import javassist.bytecode.AccessFlag;
@@ -68,7 +67,7 @@ class CtClassType extends CtClass {
     ClassFile classfile;
     byte[] rawClassfile;    // backup storage
 
-    private WeakReference memberCache;
+    private volatile WeakReference memberCache;
     private AccessorMaker accessors;
 
     private FieldInitLink fieldInitializers;
@@ -862,16 +861,20 @@ class CtClassType extends CtClass {
             return null;
     }
 
-    protected synchronized CtMember.Cache getMembers() {
+    protected CtMember.Cache getMembers() {
         CtMember.Cache cache = null;
-        if (memberCache == null
-            || (cache = (CtMember.Cache)memberCache.get()) == null) {
+        if (memberCache != null && (cache = (CtMember.Cache) memberCache.get()) != null) {
+            return cache;
+        }
+        synchronized (this) {
+            if (memberCache != null && (cache = (CtMember.Cache) memberCache.get()) != null) {
+                return cache;
+            }
             cache = new CtMember.Cache(this);
             makeFieldCache(cache);
             makeBehaviorCache(cache);
             memberCache = new WeakReference(cache);
         }
-
         return cache;
     }
 

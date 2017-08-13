@@ -42,10 +42,14 @@ public class JvstCodeGen extends MemberCodeGen {
     String proceedName = null;
     public static final String cflowName = "$cflow";
     ProceedHandler procHandler = null;  // null if not used.
+    
+    public static boolean useTypeChecker = true;
 
     public JvstCodeGen(Bytecode b, CtClass cc, ClassPool cp) {
         super(b, cc, cp);
-        setTypeChecker(new JvstTypeChecker(cc, cp, this));
+        if (useTypeChecker) {
+            setTypeChecker(new JvstTypeChecker(cc, cp, this));
+        }
     }
 
     /* Index of $1.
