@@ -25,7 +25,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import javassist.CannotCompileException;
 import javassist.util.CollectionUtils;
@@ -645,9 +644,7 @@ public final class ClassFile implements AttributeChangeListener {
      * @throws DuplicateMemberException         when the field is already included.
      */
     public void addField(FieldInfo finfo) throws DuplicateMemberException {
-        long ns = System.nanoTime();
         testExistingField(finfo.getName(), finfo.getDescriptor());
-        testExistingField_ns.addAndGet(System.nanoTime()-ns);
         addField2(finfo);
     }
     
@@ -708,18 +705,6 @@ public final class ClassFile implements AttributeChangeListener {
             }
         }
     }
-    private static final AtomicLong testExistingField_ns = new AtomicLong();
-    
-    private static final AtomicLong testExistingMethod_ns = new AtomicLong();
-    
-    public static AtomicLong getTestexistingfieldNs() {
-        return testExistingField_ns;
-    }
-    
-    public static AtomicLong getTestexistingmethodNs() {
-        return testExistingMethod_ns;
-    }
-
 
     private void testExistingField(String name, String descriptor)
             throws DuplicateMemberException {
@@ -789,9 +774,7 @@ public final class ClassFile implements AttributeChangeListener {
      * @throws DuplicateMemberException         when the method is already included.
      */
     public void addMethod(MethodInfo minfo) throws DuplicateMemberException {
-        long ns = System.nanoTime();
         testExistingMethod(minfo);
-        testExistingMethod_ns.addAndGet(System.nanoTime() - ns);
         addMethod2(minfo);
     }
 

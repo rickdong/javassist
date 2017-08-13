@@ -19,8 +19,6 @@ package javassist.compiler;
 import javassist.CtClass;
 import javassist.CtField;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import javassist.ClassPool;
 import javassist.Modifier;
 import javassist.NotFoundException;
@@ -724,12 +722,6 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
         return null;
     }
 
-    private static final AtomicLong lookupMethod_ns = new AtomicLong();
-    
-    public static AtomicLong getLookupmethodNs() {
-        return lookupMethod_ns;
-    }
-    
     /**
      * @return  a pair of the class declaring the invoked method
      *          and the MethodInfo of that method.  Never null.
@@ -743,11 +735,9 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
         int[] dims = new int[nargs];
         String[] cnames = new String[nargs];
         atMethodArgs(args, types, dims, cnames);
-        long ns = System.nanoTime();
         MemberResolver.Method found
             = resolver.lookupMethod(targetClass, thisClass, thisMethod,
                                     mname, types, dims, cnames);
-        lookupMethod_ns.addAndGet(System.nanoTime() - ns);
         if (found == null) {
             String clazz = targetClass.getName();
             String signature = argTypesToString(types, dims, cnames); 

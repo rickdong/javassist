@@ -93,7 +93,7 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
     }
 
     public void setTypeChecker(TypeChecker checker) {
-//        typeChecker = checker;
+        typeChecker = checker;
     }
 
     protected static void fatal() throws CompileError {
