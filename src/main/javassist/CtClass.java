@@ -31,6 +31,7 @@ import javassist.bytecode.ClassFile;
 import javassist.bytecode.Descriptor;
 import javassist.bytecode.Opcode;
 import javassist.expr.ExprEditor;
+import javassist.util.JvmNamesCache;
 
 /* Note:
  *
@@ -1486,7 +1487,7 @@ public abstract class CtClass {
     protected DataOutputStream makeFileOutput(String directoryName) {
         String classname = getName();
         String filename = directoryName + File.separatorChar
-            + classname.replace('.', File.separatorChar) + ".class";
+            + JvmNamesCache.javaToJvmName(classname) + ".class";
         int pos = filename.lastIndexOf(File.separatorChar);
         if (pos > 0) {
             String dir = filename.substring(0, pos);

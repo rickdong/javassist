@@ -18,10 +18,14 @@ package javassist.compiler;
 
 import javassist.CtClass;
 import javassist.CtField;
+
+import java.util.concurrent.atomic.AtomicLong;
+
 import javassist.ClassPool;
 import javassist.Modifier;
 import javassist.NotFoundException;
 import javassist.compiler.ast.*;
+import javassist.util.JvmNamesCache;
 import javassist.bytecode.*;
 
 public class TypeChecker extends Visitor implements Opcode, TokenId {
@@ -79,7 +83,7 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
                                         int type, int dim, String cname) {
         String s;
         if (type == CLASS)
-            s = MemberResolver.jvmToJavaName(cname);
+            s = JvmNamesCache.jvmToJavaName(cname);
         else if (type == NULL)
             s = "Object";
         else
@@ -112,14 +116,14 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
      * Returns the JVM-internal representation of this class name.
      */
     protected String getThisName() {
-        return MemberResolver.javaToJvmName(thisClass.getName());
+        return JvmNamesCache.javaToJvmName(thisClass.getName());
     }
 
     /**
      * Returns the JVM-internal representation of this super class name.
      */
     protected String getSuperName() throws CompileError {
-        return MemberResolver.javaToJvmName(
+        return JvmNamesCache.javaToJvmName(
                         MemberResolver.getSuperclass(thisClass).getName());
     }
 
@@ -149,7 +153,7 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
             atMethodCallCore(clazz, MethodInfo.nameInit, args);
             exprType = CLASS;
             arrayDim = 0;
-            className = MemberResolver.javaToJvmName(cname);
+            className = JvmNamesCache.javaToJvmName(cname);
         }
     }
 
@@ -673,7 +677,7 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
                         arrayDim = 0;
                         className = nfe.getField(); // JVM-internal
                         e.setOperator(MEMBER);
-                        e.setOprand1(new Symbol(MemberResolver.jvmToJavaName(
+                        e.setOprand1(new Symbol(JvmNamesCache.jvmToJavaName(
                                                                 className)));
                     }
 
@@ -720,6 +724,12 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
         return null;
     }
 
+    private static final AtomicLong lookupMethod_ns = new AtomicLong();
+    
+    public static AtomicLong getLookupmethodNs() {
+        return lookupMethod_ns;
+    }
+    
     /**
      * @return  a pair of the class declaring the invoked method
      *          and the MethodInfo of that method.  Never null.
@@ -733,10 +743,11 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
         int[] dims = new int[nargs];
         String[] cnames = new String[nargs];
         atMethodArgs(args, types, dims, cnames);
-
+        long ns = System.nanoTime();
         MemberResolver.Method found
             = resolver.lookupMethod(targetClass, thisClass, thisMethod,
                                     mname, types, dims, cnames);
+        lookupMethod_ns.addAndGet(System.nanoTime() - ns);
         if (found == null) {
             String clazz = targetClass.getName();
             String signature = argTypesToString(types, dims, cnames); 
@@ -912,7 +923,7 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
         Member fname = (Member)e.oprand2();
         CtField f = resolver.lookupFieldByJvmName2(jvmClassName, fname, e);
         e.setOperator(MEMBER);
-        e.setOprand1(new Symbol(MemberResolver.jvmToJavaName(jvmClassName)));
+        e.setOprand1(new Symbol(JvmNamesCache.jvmToJavaName(jvmClassName)));
         fname.setField(f);
         return f;
     }

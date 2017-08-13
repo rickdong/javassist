@@ -18,6 +18,9 @@ package javassist.bytecode;
 
 import java.io.PrintWriter;
 import javassist.Modifier;
+import javassist.bytecode.ClassFile.FieldInfoCallback;
+import javassist.bytecode.ClassFile.MethodInfoCallback;
+
 import java.util.List;
 import java.util.Map;
 
@@ -37,7 +40,7 @@ public class ClassFilePrinter {
     /**
      * Prints the contents of a class file.
      */
-    public static void print(ClassFile cf, PrintWriter out) {
+    public static void print(ClassFile cf, final PrintWriter out) {
         List list;
         int n;
 
@@ -63,30 +66,29 @@ public class ClassFilePrinter {
         }
 
         out.println();
-        list = cf.getFields();
-        n = list.size();
-        for (int i = 0; i < n; ++i) {
-            FieldInfo finfo = (FieldInfo)list.get(i);
-            int acc = finfo.getAccessFlags();
-            out.println(Modifier.toString(AccessFlag.toModifier(acc))
-                        + " " + finfo.getName() + "\t"
-                        + finfo.getDescriptor());
-            printAttributes(finfo.getAttributes(), out, 'f');
-        }
-
+        
+        cf.loopFields(new FieldInfoCallback() {
+            @Override
+            public void onInfo(FieldInfo info) {
+                int acc = info.getAccessFlags();
+                out.println(Modifier.toString(AccessFlag.toModifier(acc))
+                            + " " + info.getName() + "\t"
+                            + info.getDescriptor());
+                printAttributes(info.getAttributes(), out, 'f');
+            }
+        });
         out.println();
-        list = cf.getMethods();
-        n = list.size();
-        for (int i = 0; i < n; ++i) {
-            MethodInfo minfo = (MethodInfo)list.get(i);
-            int acc = minfo.getAccessFlags();
-            out.println(Modifier.toString(AccessFlag.toModifier(acc))
-                        + " " + minfo.getName() + "\t"
-                        + minfo.getDescriptor());
-            printAttributes(minfo.getAttributes(), out, 'm');
-            out.println();
-        }
-
+        cf.loopMethods(new MethodInfoCallback() {
+            @Override
+            public void onInfo(MethodInfo info) {
+                int acc = info.getAccessFlags();
+                out.println(Modifier.toString(AccessFlag.toModifier(acc))
+                            + " " + info.getName() + "\t"
+                            + info.getDescriptor());
+                printAttributes(info.getAttributes(), out, 'm');
+                out.println();
+            }
+        });
         out.println();
         printAttributes(cf.getAttributes(), out, 'c');
     }

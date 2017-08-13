@@ -19,6 +19,7 @@ package javassist.compiler;
 import javassist.*;
 import javassist.bytecode.*;
 import javassist.compiler.ast.*;
+import javassist.util.JvmNamesCache;
 
 /* Code generator accepting extended Java syntax for Javassist.
  */
@@ -506,14 +507,14 @@ public class JvstCodeGen extends MemberCodeGen {
         useParam0 = use0;
 
         if (target != null)
-            param0Type = MemberResolver.jvmToJavaName(target);
+            param0Type = JvmNamesCache.jvmToJavaName(target);
 
         inStaticMethod = isStatic;
         varNo = paramBase;
         if (use0) {
             String varName = prefix + "0";
             Declarator decl
-                = new Declarator(CLASS, MemberResolver.javaToJvmName(target),
+                = new Declarator(CLASS, JvmNamesCache.javaToJvmName(target),
                                  0, varNo++, new Symbol(varName));
             tbl.append(varName, decl);
         }
@@ -691,7 +692,7 @@ public class JvstCodeGen extends MemberCodeGen {
         else {
             exprType = CLASS;
             arrayDim = dim;
-            className = MemberResolver.javaToJvmName(type.getName());
+            className = JvmNamesCache.javaToJvmName(type.getName());
         }
     }
 

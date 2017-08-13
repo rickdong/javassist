@@ -19,6 +19,8 @@ package javassist;
 import java.io.InputStream;
 import java.net.URL;
 
+import javassist.util.JvmNamesCache;
+
 /**
  * A search-path for obtaining a class file
  * by <code>getResourceAsStream()</code> in <code>java.lang.Class</code>.
@@ -71,7 +73,7 @@ public class ClassClassPath implements ClassPath {
      * Obtains a class file by <code>getResourceAsStream()</code>.
      */
     public InputStream openClassfile(String classname) {
-        String jarname = "/" + classname.replace('.', '/') + ".class";
+        String jarname = "/" + JvmNamesCache.javaToJvmName(classname) + ".class";
         return thisClass.getResourceAsStream(jarname);
     }
 
@@ -81,7 +83,7 @@ public class ClassClassPath implements ClassPath {
      * @return null if the class file could not be found. 
      */
     public URL find(String classname) {
-        String jarname = "/" + classname.replace('.', '/') + ".class";
+        String jarname = "/" + JvmNamesCache.javaToJvmName(classname) + ".class";
         return thisClass.getResource(jarname);
     }
 

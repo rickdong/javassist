@@ -19,9 +19,10 @@ package javassist.bytecode;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
-import java.util.ArrayList;
+
+import javassist.util.ObjectUtils;
+
 import java.util.LinkedHashMap;
 
 /**
@@ -38,7 +39,7 @@ import java.util.LinkedHashMap;
  *
  * @see javassist.CtField#getFieldInfo()
  */
-public final class FieldInfo {
+public final class FieldInfo extends AttributeObservable {
     ConstPool constPool;
     int accessFlags;
     int name;
@@ -155,7 +156,11 @@ public final class FieldInfo {
      */
     public void setName(String newName) {
         name = constPool.addUtf8Info(newName);
-        cachedName = newName;
+        if(!ObjectUtils.equals(cachedName , newName)){
+            Object oldValue = cachedName;
+            cachedName = newName;
+            fireChange(this, NAME, oldValue, cachedName);
+        }
     }
 
     /**
@@ -173,7 +178,11 @@ public final class FieldInfo {
      * @see AccessFlag
      */
     public void setAccessFlags(int acc) {
-        accessFlags = acc;
+        if(!ObjectUtils.equals(accessFlags , acc)){
+            Object oldValue = accessFlags;
+            accessFlags = acc;
+            fireChange(this, ACC_FLAGS, oldValue, accessFlags);
+        }
     }
 
     /**
@@ -191,8 +200,11 @@ public final class FieldInfo {
      * @see Descriptor
      */
     public void setDescriptor(String desc) {
-        if (!desc.equals(getDescriptor()))
+        if (!desc.equals(getDescriptor())) {
+            Object oldValue = getDescriptor();
             descriptor = constPool.addUtf8Info(desc);
+            fireChange(this, DESCRIPTOR, oldValue, desc);
+        }
     }
 
     /**
@@ -251,7 +263,6 @@ public final class FieldInfo {
         if (attribute == null)
             attribute = new LinkedHashMap();
 
-        AttributeInfo.remove(attribute, info.getName());
         attribute.put(info.getName(), info);
     }
 

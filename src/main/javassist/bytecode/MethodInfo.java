@@ -19,13 +19,12 @@ package javassist.bytecode;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import javassist.ClassPool;
 import javassist.bytecode.stackmap.MapMaker;
+import javassist.util.ObjectUtils;
 
 /**
  * <code>method_info</code> structure.
@@ -54,7 +53,7 @@ import javassist.bytecode.stackmap.MapMaker;
  * @see javassist.CtMethod#getMethodInfo()
  * @see javassist.CtConstructor#getMethodInfo()
  */
-public class MethodInfo {
+public class MethodInfo extends AttributeObservable{
     ConstPool constPool;
     int accessFlags;
     int name;
@@ -225,7 +224,11 @@ public class MethodInfo {
      */
     public void setName(String newName) {
         name = constPool.addUtf8Info(newName);
-        cachedName = newName;
+        if(!ObjectUtils.equals(cachedName , newName)){
+            Object oldValue = cachedName;
+            cachedName = newName;
+            fireChange(this, NAME, oldValue, newName);
+        }
     }
 
     /**
@@ -273,7 +276,11 @@ public class MethodInfo {
      * @see AccessFlag
      */
     public void setAccessFlags(int acc) {
-        accessFlags = acc;
+        if(!ObjectUtils.equals(accessFlags , acc)){
+            Object oldValue = accessFlags;
+            accessFlags = acc;
+            fireChange(this, ACC_FLAGS, oldValue, accessFlags);
+        }
     }
 
     /**
@@ -291,8 +298,11 @@ public class MethodInfo {
      * @see Descriptor
      */
     public void setDescriptor(String desc) {
-        if (!desc.equals(getDescriptor()))
+        Object oldValue = getDescriptor();
+        if (!desc.equals(oldValue)) {
             descriptor = constPool.addUtf8Info(desc);
+            fireChange(this, DESCRIPTOR, oldValue, desc);
+        }
     }
 
     /**
@@ -334,7 +344,6 @@ public class MethodInfo {
         if (attribute == null)
             attribute = new LinkedHashMap();
 
-        AttributeInfo.remove(attribute, info.getName());
         attribute.put(info.getName(), info);
     }
 
@@ -374,7 +383,6 @@ public class MethodInfo {
      * <code>method_info</code> structure.
      */
     public void setExceptionsAttribute(ExceptionsAttribute cattr) {
-        removeExceptionsAttribute();
         if (attribute == null)
             attribute = new LinkedHashMap();
 
@@ -396,7 +404,6 @@ public class MethodInfo {
      * <code>method_info</code> structure.
      */
     public void setCodeAttribute(CodeAttribute cattr) {
-        removeCodeAttribute();
         if (attribute == null)
             attribute = new LinkedHashMap();
 
@@ -570,4 +577,5 @@ public class MethodInfo {
             AttributeInfo.writeAll(attribute, out);
         }
     }
+
 }

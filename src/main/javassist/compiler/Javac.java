@@ -23,6 +23,9 @@ import javassist.CtField;
 import javassist.CtBehavior;
 import javassist.CtMethod;
 import javassist.CtConstructor;
+
+import java.util.concurrent.atomic.AtomicLong;
+
 import javassist.CannotCompileException;
 import javassist.Modifier;
 import javassist.bytecode.Bytecode;
@@ -191,6 +194,7 @@ public class Javac {
     public Bytecode compileBody(CtBehavior method, String src)
         throws CompileError
     {
+        long ns = System.nanoTime();
         try {
             int mod = method.getModifiers();
             recordParams(method.getParameterTypes(), Modifier.isStatic(mod));
@@ -227,6 +231,9 @@ public class Javac {
         }
         catch (NotFoundException e) {
             throw new CompileError(e.toString());
+        }
+        finally {
+            compileBody_ns.addAndGet(System.nanoTime() - ns);
         }
     }
 
@@ -551,6 +558,18 @@ public class Javac {
         gen.setProceedHandler(h, proceedName);
     }
 
+    private static final AtomicLong compileStmnt_ns = new AtomicLong();
+    
+    private static final AtomicLong compileBody_ns = new AtomicLong();
+
+    public static AtomicLong getCompilebodyNs() {
+        return compileBody_ns;
+    }
+    
+    public static AtomicLong getCompilestmntNs() {
+        return compileStmnt_ns;
+    }
+    
     /**
      * Compiles a statement (or a block).
      * <code>recordParams()</code> must be called before invoking
@@ -561,6 +580,7 @@ public class Javac {
      * source text.  Fields and method parameters ($0, $1, ..) are available.
      */
     public void compileStmnt(String src) throws CompileError {
+        long ns = System.nanoTime();
         Parser p = new Parser(new Lex(src));
         SymbolTable stb = new SymbolTable(stable);
         while (p.hasMore()) {
@@ -568,6 +588,7 @@ public class Javac {
             if (s != null)
                 s.accept(gen);
         }
+        compileStmnt_ns.addAndGet(System.nanoTime() - ns);
     }
 
     /**

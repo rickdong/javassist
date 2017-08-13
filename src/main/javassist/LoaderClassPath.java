@@ -18,6 +18,9 @@ package javassist;
 
 import java.io.InputStream;
 import java.net.URL;
+
+import javassist.util.JvmNamesCache;
+
 import java.lang.ref.WeakReference;
 
 /**
@@ -63,7 +66,7 @@ public class LoaderClassPath implements ClassPath {
      * on the class loader.
      */
     public InputStream openClassfile(String classname) {
-        String cname = classname.replace('.', '/') + ".class";
+        String cname = JvmNamesCache.javaToJvmName(classname) + ".class";
         ClassLoader cl = (ClassLoader)clref.get();
         if (cl == null)
             return null;        // not found
@@ -79,7 +82,7 @@ public class LoaderClassPath implements ClassPath {
      * @return null if the class file could not be found. 
      */
     public URL find(String classname) {
-        String cname = classname.replace('.', '/') + ".class";
+        String cname = JvmNamesCache.javaToJvmName(classname) + ".class";
         ClassLoader cl = (ClassLoader)clref.get();
         if (cl == null)
             return null;        // not found

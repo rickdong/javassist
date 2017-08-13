@@ -19,6 +19,8 @@ package javassist;
 import java.io.*;
 import java.net.*;
 
+import javassist.util.JvmNamesCache;
+
 /**
  * A class search-path specified with URL (http).
  *
@@ -87,7 +89,7 @@ public class URLClassPath implements ClassPath {
     private URLConnection openClassfile0(String classname) throws IOException {
         if (packageName == null || classname.startsWith(packageName)) {
             String jarname
-                    = directory + classname.replace('.', '/') + ".class";
+                    = directory + JvmNamesCache.javaToJvmName(classname) + ".class";
             return fetchClass0(hostname, port, jarname);
         }
         else
@@ -133,7 +135,7 @@ public class URLClassPath implements ClassPath {
     {
         byte[] b;
         URLConnection con = fetchClass0(host, port,
-                directory + classname.replace('.', '/') + ".class");
+                directory + JvmNamesCache.javaToJvmName(classname) + ".class");
         int size = con.getContentLength();
         InputStream s = con.getInputStream();
         try {

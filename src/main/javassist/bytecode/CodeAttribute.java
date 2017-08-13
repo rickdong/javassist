@@ -319,9 +319,11 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
      *                  Only the old stack map is removed. 
      */
     public void setAttribute(StackMapTable smt) {
-        AttributeInfo.remove(attributes, StackMapTable.tag);
-        if (smt != null)
+        if (smt != null) {
             attributes.put(smt.getName(), smt);
+        } else{
+            attributes.remove(StackMapTable.tag);
+        }
     }
 
     /**

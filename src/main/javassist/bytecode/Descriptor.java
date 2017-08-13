@@ -20,7 +20,11 @@ import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtPrimitiveType;
 import javassist.NotFoundException;
+import javassist.util.JvmNamesCache;
+
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * A support class for dealing with descriptors.
@@ -36,7 +40,7 @@ public class Descriptor {
      * to <code>toJvmName(s)</code>.
      */
     public static String toJvmName(String classname) {
-        return classname.replace('.', '/');
+        return JvmNamesCache.javaToJvmName(classname);
     }
 
     /**
@@ -49,7 +53,7 @@ public class Descriptor {
      * @see #toClassName(String)
      */
     public static String toJavaName(String classname) {
-        return classname.replace('/', '.');
+        return JvmNamesCache.jvmToJavaName(classname);
     }
 
     /**
@@ -333,7 +337,7 @@ public class Descriptor {
             StringBuffer newdesc = new StringBuffer();
             newdesc.append(desc.substring(0, i));
             newdesc.append('L');
-            newdesc.append(classname.replace('.', '/'));
+            newdesc.append(JvmNamesCache.javaToJvmName(classname));
             newdesc.append(';');
             newdesc.append(desc.substring(i));
             return newdesc.toString();
@@ -354,7 +358,7 @@ public class Descriptor {
         if (desc.charAt(0) != '(')
             return desc;
         else
-            return "(L" + classname.replace('.', '/') + ';'
+            return "(L" + JvmNamesCache.javaToJvmName(classname) + ';'
                    + desc.substring(1);
     }
 
@@ -411,7 +415,7 @@ public class Descriptor {
             StringBuffer newdesc = new StringBuffer();
             newdesc.append(desc.substring(0, i + 1));
             newdesc.append('L');
-            newdesc.append(classname.replace('.', '/'));
+            newdesc.append(JvmNamesCache.javaToJvmName(classname));
             newdesc.append(';');
             return newdesc.toString();
         }
@@ -491,6 +495,7 @@ public class Descriptor {
         }
     }
 
+    private static final ConcurrentMap<String, Integer> numOfParametersCache = new ConcurrentHashMap();
     /**
      * Returns the number of the prameters included in the given
      * descriptor.
@@ -498,6 +503,10 @@ public class Descriptor {
      * @param desc descriptor
      */
     public static int numOfParameters(String desc) {
+        Integer ret = numOfParametersCache.get(desc);
+        if (ret != null) {
+            return ret;
+        }
         int n = 0;
         int i = 1;
         for (;;) {
@@ -518,7 +527,10 @@ public class Descriptor {
 
             ++n;
         }
-
+        Integer prev = numOfParametersCache.putIfAbsent(desc, n);
+        if (prev != null) {
+            n = prev;
+        }
         return n;
     }
 

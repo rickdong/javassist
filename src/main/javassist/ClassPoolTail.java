@@ -18,6 +18,9 @@ package javassist;
 
 import java.io.*;
 import java.util.jar.*;
+
+import javassist.util.JvmNamesCache;
+
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Hashtable;
@@ -43,7 +46,7 @@ final class DirClassPath implements ClassPath {
         try {
             char sep = File.separatorChar;
             String filename = directory + sep
-                + classname.replace('.', sep) + ".class";
+                + JvmNamesCache.javaToJvmName(classname) + ".class";
             return new FileInputStream(filename.toString());
         }
         catch (FileNotFoundException e) {}
@@ -54,7 +57,7 @@ final class DirClassPath implements ClassPath {
     public URL find(String classname) {
         char sep = File.separatorChar;
         String filename = directory + sep
-            + classname.replace('.', sep) + ".class";
+            + JvmNamesCache.javaToJvmName(classname) + ".class";
         File f = new File(filename);
         if (f.exists())
             try {
@@ -139,7 +142,7 @@ final class JarClassPath implements ClassPath {
         throws NotFoundException
     {
         try {
-            String jarname = classname.replace('.', '/') + ".class";
+            String jarname = JvmNamesCache.javaToJvmName(classname) + ".class";
             JarEntry je = jarfile.getJarEntry(jarname);
             if (je != null)
                 return jarfile.getInputStream(je);
@@ -152,7 +155,7 @@ final class JarClassPath implements ClassPath {
     }
 
     public URL find(String classname) {
-        String jarname = classname.replace('.', '/') + ".class";
+        String jarname = JvmNamesCache.javaToJvmName(classname) + ".class";
         JarEntry je = jarfile.getJarEntry(jarname);
         if (je != null)
             try {

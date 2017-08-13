@@ -16,19 +16,31 @@
 
 package javassist;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import javassist.bytecode.AttributeChangeListener;
+import javassist.bytecode.AttributeObservable;
+import javassist.bytecode.FieldInfo;
+import javassist.bytecode.MethodInfo;
+import javassist.util.CollectionUtils;
+
 /**
  * An instance of <code>CtMember</code> represents a field, a constructor,
  * or a method.
  */
 public abstract class CtMember {
-    CtMember next;          // for internal use
     protected CtClass declaringClass;
 
     /* Make a circular link of CtMembers declared in the
      * same class so that they are garbage-collected together
      * at the same time.
      */
-    static class Cache extends CtMember {
+    static class Cache extends CtMember implements AttributeChangeListener {
         protected void extendToString(StringBuffer buffer) {}
         public boolean hasAnnotation(String clz) { return false; }
         public Object getAnnotation(Class clz)
@@ -45,93 +57,180 @@ public abstract class CtMember {
         public String getGenericSignature() { return null; }
         public void setGenericSignature(String sig) {}
 
-        private CtMember methodTail;
-        private CtMember consTail;     // constructor tail
-        private CtMember fieldTail;
+        private final List<CtConstructor> cons = new ArrayList<CtConstructor>();
+        private final Map<String, List<CtMethod>> methods = new LinkedHashMap<String, List<CtMethod>>();
+        private final List<CtMethod> methods2 = new ArrayList<CtMethod>();
+        private final Map<String, CtField> fields = new LinkedHashMap<String, CtField>();
 
         Cache(CtClassType decl) {
             super(decl);
-            methodTail = this;
-            consTail = this;
-            fieldTail = this;
-            fieldTail.next = this;
         }
 
-        CtMember methodHead() { return this; }
-        CtMember lastMethod() { return methodTail; }
-        CtMember consHead() { return methodTail; }      // may include a static initializer
-        CtMember lastCons() { return consTail; }
-        CtMember fieldHead() { return consTail; }
-        CtMember lastField() { return fieldTail; }
-
-        void addMethod(CtMember method) {
-            method.next = methodTail.next;
-            methodTail.next = method;
-            if (methodTail == consTail) {
-                consTail = method;
-                if (methodTail == fieldTail)
-                    fieldTail = method;
+        @Override
+        public void onChange(Object src, String name, Object oldValue, Object newValue) {
+            if (AttributeObservable.NAME.equals(name)) {
+                if (src instanceof FieldInfo) {
+                    CtField field = fields.remove(oldValue);
+                    fields.put((String) newValue, field);
+                } else if (src instanceof MethodInfo) {
+                    MethodInfo mi = (MethodInfo) src;
+                    List<CtMethod> mths = methods.remove(oldValue + " " + mi.getDescriptor());
+                    if (mths != null) {
+                        Iterator<CtMethod> it = mths.iterator();
+                        while (it.hasNext()) {
+                            CtMethod mth = it.next();
+                            if (mth.getMethodInfo2().equals(src)) {
+                                it.remove();
+                                CollectionUtils.addToKeyedList(newValue + " " + mi.getDescriptor(), mth, methods);
+                            }
+                        }
+                    }
+                }
+            } else if (AttributeObservable.DESCRIPTOR.equals(name)) {
+                if (src instanceof MethodInfo) {
+                    MethodInfo mi = (MethodInfo) src;
+                    List<CtMethod> mths = methods.remove(mi.getName() + " " + oldValue);
+                    if (mths != null) {
+                        Iterator<CtMethod> it = mths.iterator();
+                        while (it.hasNext()) {
+                            CtMethod mth = it.next();
+                            if (mth.getMethodInfo2().equals(src)) {
+                                it.remove();
+                                CollectionUtils.addToKeyedList(mi.getName() + " " + newValue, mth, methods);
+                            }
+                        }
+                    }
+                }
             }
-
-            methodTail = method;
         }
 
+        
+        void addMethod(CtMember method) {
+            CtMethod mth = (CtMethod) method;
+            mth.getMethodInfo2().addChangeListener(this);
+            CollectionUtils.addToKeyedList(mth.getName() + " " + method.getSignature(), mth, methods);
+            methods2.add(mth);
+        }
+
+        CtMethod[] getMethods() {
+            return methods2.toArray(new CtMethod[0]);
+        }
+        
+        CtMethod getMethod(String name, String desc) {
+            List<CtMethod> mths = methods.get(name + " " + desc);
+            return mths == null || mths.isEmpty() ? null : mths.get(0);
+        }
+        
         /* Both constructors and a class initializer.
          */
         void addConstructor(CtMember cons) {
-            cons.next = consTail.next;
-            consTail.next = cons;
-            if (consTail == fieldTail)
-                fieldTail = cons;
+            this.cons.add((CtConstructor) cons);
+        }
+        
+        CtConstructor[] getConstructors(){
+            return cons.toArray(new CtConstructor[0]);
+        }
+        
+        CtConstructor[] getPublicConstructors(){
+            List<CtConstructor> ret = new ArrayList<CtConstructor>();
+            for(CtConstructor c : cons){
+                if(isPubCons(c)){
+                    ret.add(c);
+                }
+            }
+            return ret.toArray(new CtConstructor[0]);
+        }
+        
+        CtConstructor[] getDeclaredConstructors() {
+            List<CtConstructor> ret = new ArrayList<CtConstructor>();
+            for(CtConstructor c : cons){
+                if(c.isConstructor()){
+                    ret.add(c);
+                }
+            }
+            return ret.toArray(new CtConstructor[0]);
+        }
+        
+        CtConstructor getConstructors(String desc) {
+            for(CtConstructor c : cons){
+                if (c.getMethodInfo2().getDescriptor().equals(desc) && c.isConstructor()) {
+                    return c;
+                }
+            }
+            return null;
+        }
+        
+        CtConstructor getClassInitializer() {
+            for (CtConstructor c : cons) {
+                if (c.isClassInitializer()) {
+                    return c;
+                }
+            }
+            return null;
+        }
 
-            consTail = cons;
+        private static boolean isPubCons(CtConstructor cons) {
+            return !Modifier.isPrivate(cons.getModifiers())
+                    && cons.isConstructor();
         }
 
         void addField(CtMember field) {
-            field.next = this; // or fieldTail.next
-            fieldTail.next = field;
-            fieldTail = field;
+            CtField f = (CtField) field;
+            fields.put(f.getName(), f);
+            f.getFieldInfo2().addChangeListener(this);
         }
-
-        static int count(CtMember head, CtMember tail) {
-            int n = 0;
-            while (head != tail) {
-                n++;
-                head = head.next;
+        
+        CtField[] getFields(){
+            return fields.values().toArray(new CtField[0]);
+        }
+        
+        CtField getFieldByName(String name){
+            return fields.get(name);
+        }
+        
+        CtField getFieldByNameAndDescc(String name, String desc) {
+            CtField field = getFieldByName(name);
+            if (field != null && desc.equals(field.getSignature())) {
+                return field;
             }
-
-            return n;
+            for (CtField f : fields.values()) {
+                if (f.getName().equals(name) && (desc == null || desc.equals(f.getSignature()))) {
+                    return f;
+                }
+            }
+            return null;
         }
 
         void remove(CtMember mem) {
-            CtMember m = this;
-            CtMember node;
-            while ((node = m.next) != this) {
-                if (node == mem) {
-                    m.next = node.next;
-                    if (node == methodTail)
-                        methodTail = m;
-
-                    if (node == consTail)
-                        consTail = m;
-
-                    if (node == fieldTail)
-                        fieldTail = m;
-
-                    break;
+            if(mem instanceof CtMethod){
+                CtMethod mth = (CtMethod) mem;
+                Iterator<Entry<String, List<CtMethod>>> it = methods.entrySet().iterator();
+                while(it.hasNext()){
+                    List<CtMethod> val  = it.next().getValue();
+                    if(val.remove(mth)) {
+                        mth.getMethodInfo2().removeChangeListener(this);
+                        methods2.remove(mth);
+                    }
+                    if(val.isEmpty()){
+                        it.remove();
+                    }
                 }
-                else
-                    m = m.next;
+            }
+            else if(mem instanceof CtField){
+                CtField f = fields.remove(mem.getName());
+                if (f != null) {
+                    f.getFieldInfo2().removeChangeListener(this);
+                }
+            }
+            else if(mem instanceof CtConstructor){
+                cons.remove(mem);
             }
         }
     }
 
     protected CtMember(CtClass clazz) {
         declaringClass = clazz;
-        next = null;
     }
-
-    final CtMember next() { return next; }
 
     /**
      * This method is invoked when setName() or replaceClassName()

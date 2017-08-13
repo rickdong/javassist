@@ -19,6 +19,7 @@ package javassist.compiler;
 import javassist.*;
 import javassist.bytecode.*;
 import javassist.compiler.ast.*;
+import javassist.util.JvmNamesCache;
 
 import java.util.ArrayList;
 
@@ -65,14 +66,14 @@ public class MemberCodeGen extends CodeGen {
      * Returns the JVM-internal representation of this class name.
      */
     protected String getThisName() {
-        return MemberResolver.javaToJvmName(thisClass.getName());
+        return JvmNamesCache.javaToJvmName(thisClass.getName());
     }
 
     /**
      * Returns the JVM-internal representation of this super class name.
      */
     protected String getSuperName() throws CompileError {
-        return MemberResolver.javaToJvmName(
+        return JvmNamesCache.javaToJvmName(
                         MemberResolver.getSuperclass(thisClass).getName());
     }
 
@@ -225,7 +226,7 @@ public class MemberCodeGen extends CodeGen {
             decl.setLocalVar(var);
 
             CtClass type = resolver.lookupClassByJvmName(decl.getClassName());
-            decl.setClassName(MemberResolver.javaToJvmName(type.getName()));
+            decl.setClassName(JvmNamesCache.javaToJvmName(type.getName()));
             bc.addExceptionHandler(start, end, bc.currentPc(), type);
             bc.growStack(1);
             bc.addAstore(var);
@@ -304,7 +305,7 @@ public class MemberCodeGen extends CodeGen {
 
             exprType = CLASS;
             arrayDim = 0;
-            className = MemberResolver.javaToJvmName(cname);
+            className = JvmNamesCache.javaToJvmName(cname);
         }
     }
 
@@ -345,7 +346,7 @@ public class MemberCodeGen extends CodeGen {
         String elementClass;
         if (type == CLASS) {
             elementClass = resolveClassName(jvmClassname);
-            bytecode.addAnewarray(MemberResolver.jvmToJavaName(elementClass));
+            bytecode.addAnewarray(JvmNamesCache.jvmToJavaName(elementClass));
         }
         else {
             elementClass = null;
