@@ -17,11 +17,43 @@
 package javassist.compiler.ast;
 
 import javassist.compiler.CompileError;
+import javassist.compiler.TokenId;
 
 /**
  * Keyword.
  */
 public class Keyword extends ASTree {
+    
+    public static final Keyword TRUE = new Keyword(TokenId.TRUE);
+    
+    public static final Keyword FALSE = new Keyword(TokenId.FALSE);
+    
+    public static final Keyword THIS = new Keyword(TokenId.THIS);
+    
+    public static final Keyword SUPER = new Keyword(TokenId.SUPER);
+    
+    public static final Keyword NULL = new Keyword(TokenId.NULL);
+    
+    public static final Keyword ABSTRACT = new Keyword(TokenId.ABSTRACT);
+    
+    public static final Keyword FINAL = new Keyword(TokenId.FINAL);
+    
+    public static final Keyword PUBLIC = new Keyword(TokenId.PUBLIC);
+    
+    public static final Keyword PROTECTED = new Keyword(TokenId.PROTECTED);
+    
+    public static final Keyword PRIVATE = new Keyword(TokenId.PRIVATE);
+    
+    public static final Keyword SYNCHRONIZED = new Keyword(TokenId.SYNCHRONIZED);
+    
+    public static final Keyword STATIC = new Keyword(TokenId.STATIC);
+    
+    public static final Keyword VOLATILE = new Keyword(TokenId.VOLATILE);
+    
+    public static final Keyword TRANSIENT = new Keyword(TokenId.TRANSIENT);
+    
+    public static final Keyword STRICT = new Keyword(TokenId.STRICT);
+
     protected int tokenId;
 
     public Keyword(int token) {

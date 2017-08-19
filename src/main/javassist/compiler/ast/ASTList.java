@@ -71,7 +71,7 @@ public class ASTList extends ASTree {
     public void accept(Visitor v) throws CompileError { v.atASTList(this); }
 
     public String toString() {
-        StringBuffer sbuf = new StringBuffer();
+        StringBuilder sbuf = new StringBuilder();
         sbuf.append("(<");
         sbuf.append(getTag());
         sbuf.append('>');

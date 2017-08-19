@@ -235,7 +235,7 @@ public class InstructionPrinter implements Opcode {
 
 
     private static String lookupSwitch(CodeIterator iter, int pos) {
-        StringBuffer buffer = new StringBuffer("lookupswitch {\n");
+        StringBuilder buffer = new StringBuilder("lookupswitch {\n");
         int index = (pos & ~3) + 4;
         // default
         buffer.append("\t\tdefault: ").append(pos + iter.s32bitAt(index)).append("\n");
@@ -254,7 +254,7 @@ public class InstructionPrinter implements Opcode {
 
 
     private static String tableSwitch(CodeIterator iter, int pos) {
-        StringBuffer buffer = new StringBuffer("tableswitch {\n");
+        StringBuilder buffer = new StringBuilder("tableswitch {\n");
         int index = (pos & ~3) + 4;
         // default
         buffer.append("\t\tdefault: ").append(pos + iter.s32bitAt(index)).append("\n");

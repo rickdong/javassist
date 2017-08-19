@@ -23,6 +23,7 @@ import javassist.CtField;
 import javassist.CtBehavior;
 import javassist.CtMethod;
 import javassist.CtConstructor;
+
 import javassist.CannotCompileException;
 import javassist.Modifier;
 import javassist.bytecode.Bytecode;

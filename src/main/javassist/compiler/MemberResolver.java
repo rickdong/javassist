@@ -19,12 +19,15 @@ package javassist.compiler;
 import java.util.Hashtable;
 import java.lang.ref.WeakReference;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.List;
 import java.util.Iterator;
 
 import javassist.*;
 import javassist.bytecode.*;
 import javassist.compiler.ast.*;
+import javassist.util.JvmNamesCache;
 
 /* Code generator methods depending on javassist.* classes.
  */
@@ -100,12 +103,9 @@ public class MemberResolver implements TokenId {
         // If the class is an array type, the class file is null.
         // If so, search the super class java.lang.Object for clone() etc.
         if (cf != null) {
-            List list = cf.getMethods();
-            int n = list.size();
-            for (int i = 0; i < n; ++i) {
-                MethodInfo minfo = (MethodInfo)list.get(i);
-                if (minfo.getName().equals(methodName)
-                    && (minfo.getAccessFlags() & AccessFlag.BRIDGE) == 0) {
+            List<MethodInfo> ms1 = cf.getMethods(methodName);
+            for (MethodInfo minfo : ms1) {
+                if (minfo.getName().equals(methodName) && (minfo.getAccessFlags() & AccessFlag.BRIDGE) == 0) {
                     int res = compareSignature(minfo.getDescriptor(),
                                            argTypes, argDims, argClassNames);
                     if (res != NO) {
@@ -273,7 +273,7 @@ public class MemberResolver implements TokenId {
         String field = fieldSym.get();
         CtClass cc = null;
         try {
-            cc = lookupClass(jvmToJavaName(jvmClassName), true);
+            cc = lookupClass(JvmNamesCache.jvmToJavaName(jvmClassName), true);
         }
         catch (CompileError e) {
             // EXPR might be part of a qualified class name.
@@ -285,7 +285,7 @@ public class MemberResolver implements TokenId {
         }
         catch (NotFoundException e) {
             // maybe an inner class.
-            jvmClassName = javaToJvmName(cc.getName());
+            jvmClassName = JvmNamesCache.javaToJvmName(cc.getName());
             throw new NoFieldException(jvmClassName + "$" + field, expr);
         }
     }
@@ -296,7 +296,7 @@ public class MemberResolver implements TokenId {
     public CtField lookupFieldByJvmName(String jvmClassName, Symbol fieldName)
         throws CompileError
     {
-        return lookupField(jvmToJavaName(jvmClassName), fieldName);
+        return lookupField(JvmNamesCache.jvmToJavaName(jvmClassName), fieldName);
     }
 
     /**
@@ -318,7 +318,7 @@ public class MemberResolver implements TokenId {
     }
 
     public CtClass lookupClassByJvmName(String jvmName) throws CompileError {
-        return lookupClass(jvmToJavaName(jvmName), false);
+        return lookupClass(JvmNamesCache.jvmToJavaName(jvmName), false);
     }
 
     public CtClass lookupClass(Declarator decl) throws CompileError {
@@ -483,7 +483,7 @@ public class MemberResolver implements TokenId {
                 if (notCheckInner || i < 0)
                     throw e;
                 else {
-                    StringBuffer sbuf = new StringBuffer(classname);
+                    StringBuilder sbuf = new StringBuilder(classname);
                     sbuf.setCharAt(i, '$');
                     classname = sbuf.toString();
                 }
@@ -501,7 +501,7 @@ public class MemberResolver implements TokenId {
         if (name == null)
             return null;
         else
-            return javaToJvmName(lookupClassByName(name).getName());
+            return JvmNamesCache.javaToJvmName(lookupClassByName(name).getName());
     }
 
     /* Expands a simple class name to java.lang.*.
@@ -511,7 +511,7 @@ public class MemberResolver implements TokenId {
         if (jvmName == null)
             return null;
         else
-            return javaToJvmName(lookupClassByJvmName(jvmName).getName());
+            return JvmNamesCache.javaToJvmName(lookupClassByJvmName(jvmName).getName());
     }
 
     public static CtClass getSuperclass(CtClass c) throws CompileError {
@@ -536,14 +536,6 @@ public class MemberResolver implements TokenId {
         } catch (NotFoundException e) {}
         throw new CompileError("cannot find the super inetrface " + interfaceName
                                + " of " + c.getName());
-    }
-
-    public static String javaToJvmName(String classname) {
-        return classname.replace('.', '/');
-    }
-
-    public static String jvmToJavaName(String classname) {
-        return classname.replace('/', '.');
     }
 
     public static int descToType(char c) throws CompileError {

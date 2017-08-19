@@ -21,7 +21,7 @@ package javassist.bytecode;
  */
 public class BadBytecode extends Exception {
     public BadBytecode(int opcode) {
-        super("bytecode " + opcode);
+        super("bytecode " + opcode, null);
     }
 
     public BadBytecode(String msg) {

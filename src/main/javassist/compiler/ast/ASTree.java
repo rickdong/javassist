@@ -41,7 +41,7 @@ public abstract class ASTree implements Serializable {
     public abstract void accept(Visitor v) throws CompileError;
 
     public String toString() {
-        StringBuffer sbuf = new StringBuffer();
+        StringBuilder sbuf = new StringBuilder();
         sbuf.append('<');
         sbuf.append(getTag());
         sbuf.append('>');

@@ -20,6 +20,7 @@ import java.util.Iterator;
 import javassist.*;
 import javassist.CtMethod.ConstParameter;
 import javassist.bytecode.ClassFile;
+import javassist.bytecode.ClassFile.MethodInfoCallback;
 import javassist.bytecode.BadBytecode;
 import javassist.bytecode.MethodInfo;
 
@@ -346,7 +347,7 @@ public class Reflection implements Translator {
         if (dontSearch)
             return m;
 
-        String name = m.getName();
+        String name = "_" + m.getName();
         CtMethod[] ms = m.getDeclaringClass().getDeclaredMethods();
         for (int i = 0; i < ms.length; ++i) {
             String orgName = ms[i].getName();
@@ -393,11 +394,23 @@ public class Reflection implements Translator {
     public void rebuildClassFile(ClassFile cf) throws BadBytecode {
         if (ClassFile.MAJOR_VERSION < ClassFile.JAVA_6)
             return;
-
-        Iterator methods = cf.getMethods().iterator();
-        while (methods.hasNext()) {
-            MethodInfo mi = (MethodInfo)methods.next();
-            mi.rebuildStackMap(classPool);
+        try {
+            cf.loopMethods(new MethodInfoCallback() {
+                @Override
+                public void onInfo(MethodInfo info) {
+                    try {
+                        info.rebuildStackMap(classPool);
+                    } catch (BadBytecode e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+        } catch (RuntimeException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof BadBytecode) {
+                throw (BadBytecode) cause;
+            }
+            throw ex;
         }
     }
 }

@@ -20,7 +20,11 @@ import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtPrimitiveType;
 import javassist.NotFoundException;
+import javassist.util.JvmNamesCache;
+
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * A support class for dealing with descriptors.
@@ -36,7 +40,7 @@ public class Descriptor {
      * to <code>toJvmName(s)</code>.
      */
     public static String toJvmName(String classname) {
-        return classname.replace('.', '/');
+        return JvmNamesCache.javaToJvmName(classname);
     }
 
     /**
@@ -49,7 +53,7 @@ public class Descriptor {
      * @see #toClassName(String)
      */
     public static String toJavaName(String classname) {
-        return classname.replace('/', '.');
+        return JvmNamesCache.jvmToJavaName(classname);
     }
 
     /**
@@ -110,7 +114,7 @@ public class Descriptor {
         if (arrayDim == 0)
             return name;
         else {
-            StringBuffer sbuf = new StringBuffer(name);
+            StringBuilder sbuf = new StringBuilder(name);
             do {
                 sbuf.append("[]");
             } while (--arrayDim > 0);
@@ -159,7 +163,7 @@ public class Descriptor {
         if (desc.indexOf(oldname) < 0)
             return desc;
 
-        StringBuffer newdesc = new StringBuffer();
+        StringBuilder newdesc = new StringBuilder();
         int head = 0;
         int i = 0;
         for (;;) {
@@ -204,7 +208,7 @@ public class Descriptor {
         if (map == null)
             return desc;
 
-        StringBuffer newdesc = new StringBuffer();
+        StringBuilder newdesc = new StringBuilder();
         int head = 0;
         int i = 0;
         for (;;) {
@@ -243,12 +247,12 @@ public class Descriptor {
      * Returns the descriptor representing the given type.
      */
     public static String of(CtClass type) {
-        StringBuffer sbuf = new StringBuffer();
+        StringBuilder sbuf = new StringBuilder();
         toDescriptor(sbuf, type);
         return sbuf.toString();
     }
 
-    private static void toDescriptor(StringBuffer desc, CtClass type) {
+    private static void toDescriptor(StringBuilder desc, CtClass type) {
         if (type.isArray()) {
             desc.append('[');
             try {
@@ -290,7 +294,7 @@ public class Descriptor {
      * @param paramTypes parameter types
      */
     public static String ofMethod(CtClass returnType, CtClass[] paramTypes) {
-        StringBuffer desc = new StringBuffer();
+        StringBuilder desc = new StringBuilder();
         desc.append('(');
         if (paramTypes != null) {
             int n = paramTypes.length;
@@ -330,10 +334,10 @@ public class Descriptor {
         if (i < 0)
             return desc;
         else {
-            StringBuffer newdesc = new StringBuffer();
+            StringBuilder newdesc = new StringBuilder();
             newdesc.append(desc.substring(0, i));
             newdesc.append('L');
-            newdesc.append(classname.replace('.', '/'));
+            newdesc.append(JvmNamesCache.javaToJvmName(classname));
             newdesc.append(';');
             newdesc.append(desc.substring(i));
             return newdesc.toString();
@@ -354,7 +358,7 @@ public class Descriptor {
         if (desc.charAt(0) != '(')
             return desc;
         else
-            return "(L" + classname.replace('.', '/') + ';'
+            return "(L" + JvmNamesCache.javaToJvmName(classname) + ';'
                    + desc.substring(1);
     }
 
@@ -371,7 +375,7 @@ public class Descriptor {
         if (i < 0)
             return descriptor;
         else {
-            StringBuffer newdesc = new StringBuffer();
+            StringBuilder newdesc = new StringBuilder();
             newdesc.append(descriptor.substring(0, i));
             toDescriptor(newdesc, type);
             newdesc.append(descriptor.substring(i));
@@ -408,10 +412,10 @@ public class Descriptor {
         if (i < 0)
             return desc;
         else {
-            StringBuffer newdesc = new StringBuffer();
+            StringBuilder newdesc = new StringBuilder();
             newdesc.append(desc.substring(0, i + 1));
             newdesc.append('L');
-            newdesc.append(classname.replace('.', '/'));
+            newdesc.append(JvmNamesCache.javaToJvmName(classname));
             newdesc.append(';');
             return newdesc.toString();
         }
@@ -491,6 +495,7 @@ public class Descriptor {
         }
     }
 
+    private static final ConcurrentMap<String, Integer> numOfParametersCache = new ConcurrentHashMap();
     /**
      * Returns the number of the prameters included in the given
      * descriptor.
@@ -498,6 +503,10 @@ public class Descriptor {
      * @param desc descriptor
      */
     public static int numOfParameters(String desc) {
+        Integer ret = numOfParametersCache.get(desc);
+        if (ret != null) {
+            return ret;
+        }
         int n = 0;
         int i = 1;
         for (;;) {
@@ -518,7 +527,10 @@ public class Descriptor {
 
             ++n;
         }
-
+        Integer prev = numOfParametersCache.putIfAbsent(desc, n);
+        if (prev != null) {
+            n = prev;
+        }
         return n;
     }
 
@@ -582,7 +594,7 @@ public class Descriptor {
         }
 
         if (arrayDim > 0) {
-            StringBuffer sbuf = new StringBuffer(name);
+            StringBuilder sbuf = new StringBuilder(name);
             while (arrayDim-- > 0)
                 sbuf.append("[]");
 
@@ -740,7 +752,7 @@ public class Descriptor {
 
     static class PrettyPrinter {
         static String toString(String desc) {
-            StringBuffer sbuf = new StringBuffer();
+            StringBuilder sbuf = new StringBuilder();
             if (desc.charAt(0) == '(') {
                 int pos = 1;
                 sbuf.append('(');
@@ -759,7 +771,7 @@ public class Descriptor {
             return sbuf.toString();
         }
 
-        static int readType(StringBuffer sbuf, int pos, String desc) {
+        static int readType(StringBuilder sbuf, int pos, String desc) {
             char c = desc.charAt(pos);
             int arrayDim = 0;
             while (c == '[') {

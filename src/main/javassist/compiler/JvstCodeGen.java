@@ -19,6 +19,7 @@ package javassist.compiler;
 import javassist.*;
 import javassist.bytecode.*;
 import javassist.compiler.ast.*;
+import javassist.util.JvmNamesCache;
 
 /* Code generator accepting extended Java syntax for Javassist.
  */
@@ -41,10 +42,14 @@ public class JvstCodeGen extends MemberCodeGen {
     String proceedName = null;
     public static final String cflowName = "$cflow";
     ProceedHandler procHandler = null;  // null if not used.
+    
+    public static boolean useTypeChecker = true;
 
     public JvstCodeGen(Bytecode b, CtClass cc, ClassPool cp) {
         super(b, cc, cp);
-        setTypeChecker(new JvstTypeChecker(cc, cp, this));
+        if (useTypeChecker) {
+            setTypeChecker(new JvstTypeChecker(cc, cp, this));
+        }
     }
 
     /* Index of $1.
@@ -247,7 +252,7 @@ public class JvstCodeGen extends MemberCodeGen {
     /* To support $cflow().
      */
     protected void atCflow(ASTList cname) throws CompileError {
-        StringBuffer sbuf = new StringBuffer();
+        StringBuilder sbuf = new StringBuilder();
         if (cname == null || cname.tail() != null)
             throw new CompileError("bad " + cflowName);
 
@@ -271,7 +276,7 @@ public class JvstCodeGen extends MemberCodeGen {
      * <cflow> : $cflow '(' <cflow name> ')'
      * <cflow name> : <identifier> ('.' <identifier>)*
      */
-    private static void makeCflowName(StringBuffer sbuf, ASTree name)
+    private static void makeCflowName(StringBuilder sbuf, ASTree name)
         throws CompileError
     {
         if (name instanceof Symbol) {
@@ -505,15 +510,35 @@ public class JvstCodeGen extends MemberCodeGen {
         useParam0 = use0;
 
         if (target != null)
-            param0Type = MemberResolver.jvmToJavaName(target);
+            param0Type = JvmNamesCache.jvmToJavaName(target);
 
         inStaticMethod = isStatic;
         varNo = paramBase;
         if (use0) {
             String varName = prefix + "0";
+            int dim = 0;
+            int i = 0;
+            
+            /*
+             * rdong: this addresses the issue with not able to locate clone method on array target
+             * type in MemberResolver#compareSignature, we need to correctly capture the target
+             * array dim as well as removing the JVM class name prefix / suffix
+             */
+            while (target.charAt(i) == '[') {
+                dim++;
+                i++;
+            }
+            if (target.charAt(i) == 'L') {
+                // remove the beginning 'L' and ending ';' for reference type
+                target = target.substring(i + 1, target.length() - 1);
+            }
+            else if (i > 0) {
+                target = target.substring(i);
+            }
+            
             Declarator decl
-                = new Declarator(CLASS, MemberResolver.javaToJvmName(target),
-                                 0, varNo++, new Symbol(varName));
+                = new Declarator(CLASS, JvmNamesCache.javaToJvmName(target),
+                                 dim, varNo++, new Symbol(varName));
             tbl.append(varName, decl);
         }
 
@@ -690,7 +715,7 @@ public class JvstCodeGen extends MemberCodeGen {
         else {
             exprType = CLASS;
             arrayDim = dim;
-            className = MemberResolver.javaToJvmName(type.getName());
+            className = JvmNamesCache.javaToJvmName(type.getName());
         }
     }
 

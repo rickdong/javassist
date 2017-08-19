@@ -18,6 +18,7 @@ package javassist.compiler;
 
 import javassist.*;
 import javassist.compiler.ast.*;
+import javassist.util.JvmNamesCache;
 
 /* Type checker accepting extended Java syntax for Javassist.
  */
@@ -276,7 +277,7 @@ public class JvstTypeChecker extends TypeChecker {
         else {
             exprType = CLASS;
             arrayDim = dim;
-            className = MemberResolver.javaToJvmName(type.getName());
+            className = JvmNamesCache.javaToJvmName(type.getName());
         }
     }
 }

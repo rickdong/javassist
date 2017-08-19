@@ -334,7 +334,7 @@ public class Type {
     }
 
     String arrayName(String component, int dims) {
-     // Using char[] since we have no StringBuilder in JDK4, and StringBuffer is slow.
+     // Using char[] since we have no StringBuilder in JDK4, and StringBuilder is slow.
         // Although, this is more efficient even if we did have one.
         int i = component.length();
         int size = i + dims * 2;

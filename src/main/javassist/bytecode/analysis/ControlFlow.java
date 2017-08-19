@@ -252,7 +252,7 @@ public class ControlFlow {
             method = minfo;
         }
 
-        protected void toString2(StringBuffer sbuf) {
+        protected void toString2(StringBuilder sbuf) {
             super.toString2(sbuf);
             sbuf.append(", incoming{");
             for (int i = 0; i < entrances.length; i++)
@@ -350,7 +350,7 @@ public class ControlFlow {
          * Returns a <code>String</code> representation.
          */
         public String toString() {
-            StringBuffer sbuf = new StringBuffer();
+            StringBuilder sbuf = new StringBuilder();
             sbuf.append("Node[pos=").append(block().position());
             sbuf.append(", parent=");
             sbuf.append(parent == null ? "*" : Integer.toString(parent.block().position()));

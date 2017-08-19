@@ -192,7 +192,7 @@ public class RuntimeSupport {
      * @param retType   return type.
      */
     public static String makeDescriptor(Class[] params, Class retType) {
-        StringBuffer sbuf = new StringBuffer();
+        StringBuilder sbuf = new StringBuilder();
         sbuf.append('(');
         for (int i = 0; i < params.length; i++)
             makeDesc(sbuf, params[i]);
@@ -211,12 +211,12 @@ public class RuntimeSupport {
      * @param retType   return type.
      */
     public static String makeDescriptor(String params, Class retType) {
-        StringBuffer sbuf = new StringBuffer(params);
+        StringBuilder sbuf = new StringBuilder(params);
         makeDesc(sbuf, retType);
         return sbuf.toString();
     }
 
-    private static void makeDesc(StringBuffer sbuf, Class type) {
+    private static void makeDesc(StringBuilder sbuf, Class type) {
         if (type.isArray()) {
             sbuf.append('[');
             makeDesc(sbuf, type.getComponentType());

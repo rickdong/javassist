@@ -139,7 +139,7 @@ public class Compiler {
             return;     // syntax error?
 
         c = skipSpaces(reader, ' ');
-        StringBuffer classbuf = new StringBuffer();
+        StringBuilder classbuf = new StringBuilder();
         while (c != ' ' && c != '\t' && c != '\n' && c != '\r'
                && c != ';' && c != -1) {
             classbuf.append((char)c);
@@ -158,7 +158,7 @@ public class Compiler {
 
         reader.read();  // skip 'y'
 
-        StringBuffer assistant = new StringBuffer();
+        StringBuilder assistant = new StringBuilder();
         Vector args = new Vector();
         c = readAssistant(reader, importclass, assistant, args);
         c = skipSpaces(reader, c);
@@ -174,14 +174,14 @@ public class Compiler {
     }
 
     int readAssistant(CommentSkipper reader, String importclass,
-                      StringBuffer assistant, Vector args)
+                      StringBuilder assistant, Vector args)
         throws IOException, CannotCompileException
     {
         int c = readArgument(reader, assistant);
         c = skipSpaces(reader, c);
         if (c == '(') {
             do {
-                StringBuffer arg = new StringBuffer();
+                StringBuilder arg = new StringBuilder();
                 c = readArgument(reader, arg);
                 args.addElement(arg.toString());
                 c = skipSpaces(reader, c);
@@ -196,7 +196,7 @@ public class Compiler {
         return c;
     }
 
-    int readArgument(CommentSkipper reader, StringBuffer buf)
+    int readArgument(CommentSkipper reader, StringBuilder buf)
         throws IOException
     {
         int c = skipSpaces(reader, ' ');

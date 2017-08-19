@@ -81,7 +81,7 @@ public abstract class CtBehavior extends CtMember {
         }
     }
 
-    protected void extendToString(StringBuffer buffer) {
+    protected void extendToString(StringBuilder buffer) {
         buffer.append(' ');
         buffer.append(getName());
         buffer.append(' ');
@@ -589,7 +589,7 @@ public abstract class CtBehavior extends CtMember {
                                                 LocalVariableAttribute.tag);
         if (va == null) {
             va = new LocalVariableAttribute(cp);
-            ca.getAttributes().add(va);
+            ca.getAttributes().put(va.getName(), va);
         }
 
         int maxLocals = ca.getMaxLocals();

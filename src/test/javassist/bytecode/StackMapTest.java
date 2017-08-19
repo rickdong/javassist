@@ -17,6 +17,7 @@ import javassist.CtNewConstructor;
 import javassist.CtNewMethod;
 import javassist.JvstTest;
 import javassist.Loader;
+import javassist.bytecode.ClassFile.MethodInfoCallback;
 import javassist.bytecode.stackmap.MapMaker;
 import javassist.bytecode.stackmap.TypeData;
 import junit.framework.TestCase;
@@ -46,12 +47,30 @@ public class StackMapTest extends TestCase {
         return ((Integer)res).intValue();
     }
 
-    protected static void rebuildStackMaps(CtClass cc) throws BadBytecode, IOException {
-        ClassPool cp = cc.getClassPool();
-        Iterator it = cc.getClassFile().getMethods().iterator();
-        while (it.hasNext()) {
-            MethodInfo minfo = (MethodInfo)it.next();
-            rebuildStackMap(cc, cp, minfo);
+    protected static void rebuildStackMaps(final CtClass cc) throws BadBytecode, IOException {
+        final ClassPool cp = cc.getClassPool();
+        try {
+            cc.getClassFile().loopMethods(new MethodInfoCallback() {
+                @Override
+                public void onInfo(MethodInfo info) {
+                    try {
+                        rebuildStackMap(cc, cp, info);
+                    } catch (BadBytecode e) {
+                        throw new RuntimeException(e);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+        } catch (RuntimeException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof BadBytecode) {
+                throw (BadBytecode) cause;
+            }
+            if (cause instanceof IOException) {
+                throw (IOException) cause;
+            }
+            throw ex;
         }
     }
 
@@ -78,11 +97,24 @@ public class StackMapTest extends TestCase {
     }
 
     protected static void rebuildStackMaps2(CtClass cc) throws BadBytecode {
-    	ClassPool cp = cc.getClassPool();
-        Iterator it = cc.getClassFile().getMethods().iterator();
-        while (it.hasNext()) {
-            MethodInfo minfo = (MethodInfo)it.next();
-            minfo.rebuildStackMap(cp);
+    	final ClassPool cp = cc.getClassPool();
+        try {
+            cc.getClassFile().loopMethods(new MethodInfoCallback() {
+                @Override
+                public void onInfo(MethodInfo info) {
+                    try {
+                        info.rebuildStackMap(cp);
+                    } catch (BadBytecode e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+        } catch (RuntimeException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof BadBytecode) {
+                throw (BadBytecode) cause;
+            }
+            throw ex;
         }
     }
 
@@ -346,7 +378,7 @@ public class StackMapTest extends TestCase {
         // CodeConverter conv = new CodeConverter();
         // conv.replaceNew(cc, cc, "make2");
         // cc.instrument(conv);
-        StringBuffer sbuf = new StringBuffer("String s;");
+        StringBuilder sbuf = new StringBuilder("String s;");
         for (int i = 0; i < 130; i++)
             sbuf.append("s =\"" + i + "\";");
 
@@ -386,7 +418,7 @@ public class StackMapTest extends TestCase {
 
     public void testSwitchCase2() throws Exception {
         CtClass cc = loader.get("javassist.bytecode.StackMapTest$T7b");
-        StringBuffer sbuf = new StringBuffer("String s;");
+        StringBuilder sbuf = new StringBuilder("String s;");
         for (int i = 0; i < 130; i++)
             sbuf.append("s =\"" + i + "\";");
 
@@ -426,7 +458,7 @@ public class StackMapTest extends TestCase {
 
     public void testSwitchCase3() throws Exception {
         CtClass cc = loader.get("javassist.bytecode.StackMapTest$T7c");
-        StringBuffer sbuf = new StringBuffer("String s;");
+        StringBuilder sbuf = new StringBuilder("String s;");
         for (int i = 0; i < 130; i++)
             sbuf.append("s =\"" + i + "\";");
 
@@ -475,7 +507,7 @@ public class StackMapTest extends TestCase {
 
     public void testSwitchCase4() throws Exception {
         CtClass cc = loader.get("javassist.bytecode.StackMapTest$T8e");
-        StringBuffer sbuf = new StringBuffer("String s;");
+        StringBuilder sbuf = new StringBuilder("String s;");
         for (int i = 0; i < 130; i++)
             sbuf.append("s =\"" + i + "\";");
 
@@ -819,8 +851,7 @@ public class StackMapTest extends TestCase {
     }
 
     MethodInfo getMethodInfo(ClassFile cf, String name, String desc) {
-        List list = cf.getMethods();
-        Iterator it = list.iterator();
+        Iterator it = cf.getMethods(name).iterator();
         while (it.hasNext()) {
             MethodInfo mi = (MethodInfo)it.next();
             if (mi.getName().equals(name) && mi.getDescriptor().equals(desc))

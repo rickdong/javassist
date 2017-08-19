@@ -19,6 +19,7 @@ package javassist.compiler;
 import java.util.ArrayList;
 import java.util.Arrays;
 import javassist.compiler.ast.*;
+import javassist.util.JvmNamesCache;
 import javassist.bytecode.*;
 
 /* The code generator is implemeted by three files:
@@ -172,7 +173,7 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
         if (dim == 0)
             return name;
         else {
-            StringBuffer sbuf = new StringBuffer();
+            StringBuilder sbuf = new StringBuilder();
             int d = dim;
             while (d-- > 0)
                 sbuf.append('[');
@@ -217,7 +218,7 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
             break;
         }
 
-        StringBuffer sbuf = new StringBuffer();
+        StringBuilder sbuf = new StringBuilder();
         while (dim-- > 0)
                 sbuf.append('[');
 
@@ -325,7 +326,10 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
             return;     // empty
 
         int op = st.getOperator();
-        if (op == EXPR) {
+        if (op == TokenId.RETURN){
+            atReturnStmnt(st);
+        }
+        else if (op == EXPR) {
             ASTree expr = st.getLeft();
             doTypeCheck(expr);
             if (expr instanceof AssignExpr)
@@ -359,8 +363,6 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
             atForStmnt(st);
         else if (op == BREAK || op == CONTINUE)
             atBreakStmnt(st, op == BREAK);
-        else if (op == TokenId.RETURN)
-            atReturnStmnt(st);
         else if (op == THROW)
             atThrowStmnt(st);
         else if (op == TRY)
@@ -1580,8 +1582,8 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
                      * "[Ljava.lang.String;" (not "[Ljava/lang/String"!)
                      * must be passed to Class.forName().
                      */
-                    name2 = MemberResolver.jvmToJavaName(name2);
-                    StringBuffer sbuf = new StringBuffer();
+                    name2 = JvmNamesCache.jvmToJavaName(name2);
+                    StringBuilder sbuf = new StringBuilder();
                     while (i-- >= 0)
                         sbuf.append('[');
 
@@ -1591,8 +1593,8 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
             }
         }
         else {
-            cname = resolveClassName(MemberResolver.javaToJvmName(cname));
-            cname = MemberResolver.jvmToJavaName(cname);
+            cname = resolveClassName(JvmNamesCache.javaToJvmName(cname));
+            cname = JvmNamesCache.jvmToJavaName(cname);
         }
 
         atClassObject2(cname);

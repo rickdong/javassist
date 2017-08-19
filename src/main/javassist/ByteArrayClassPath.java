@@ -18,6 +18,9 @@ package javassist;
 
 import java.io.*;
 import java.net.URL;
+
+import javassist.util.JvmNamesCache;
+
 import java.net.MalformedURLException;
 
 /**
@@ -86,7 +89,7 @@ public class ByteArrayClassPath implements ClassPath {
      */
     public URL find(String classname) {
         if(this.classname.equals(classname)) {
-            String cname = classname.replace('.', '/') + ".class";
+            String cname = JvmNamesCache.javaToJvmName(classname) + ".class";
             try {
                 // return new File(cname).toURL();
                 return new URL("file:/ByteArrayClassPath/" + cname);

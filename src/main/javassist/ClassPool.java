@@ -218,16 +218,20 @@ public class ClassPool {
      * @see ClassClassPath
      * @see LoaderClassPath
      */
-    public static synchronized ClassPool getDefault() {
-        if (defaultPool == null) {
-            defaultPool = new ClassPool(null);
-            defaultPool.appendSystemPath();
+    public static ClassPool getDefault() {
+        if (defaultPool != null) {
+            return defaultPool;
         }
-
+        synchronized (ClassPool.class) {
+            if (defaultPool == null) {
+                defaultPool = new ClassPool(null);
+                defaultPool.appendSystemPath();
+            }
+        }
         return defaultPool;
     }
 
-    private static ClassPool defaultPool = null;
+    private volatile static ClassPool defaultPool = null;
 
     /**
      * Provide a hook so that subclasses can do their own
@@ -435,12 +439,10 @@ public class ClassPool {
      * @param classname         a fully-qualified class name.
      */
     public CtClass get(String classname) throws NotFoundException {
-        CtClass clazz;
-        if (classname == null)
-            clazz = null;
-        else
+        CtClass clazz = null;
+        if (classname != null) {
             clazz = get0(classname, true);
-
+        }
         if (clazz == null)
             throw new NotFoundException(classname);
         else {
@@ -514,7 +516,7 @@ public class ClassPool {
      * @param useCache      false if the cached CtClass must be ignored.
      * @return null     if the class could not be found.
      */
-    protected synchronized CtClass get0(String classname, boolean useCache)
+    protected CtClass get0(String classname, boolean useCache)
         throws NotFoundException
     {
         CtClass clazz = null;
@@ -523,20 +525,22 @@ public class ClassPool {
             if (clazz != null)
                 return clazz;
         }
-
         if (!childFirstLookup && parent != null) {
             clazz = parent.get0(classname, useCache);
             if (clazz != null)
                 return clazz;
         }
-
-        clazz = createCtClass(classname, useCache);
-        if (clazz != null) {
-            // clazz.getName() != classname if classname is "[L<name>;".
-            if (useCache)
-                cacheCtClass(clazz.getName(), clazz, false);
-
-            return clazz;
+        
+        String cname = classname.intern();
+        synchronized (cname) {
+            clazz = createCtClass(classname, useCache);
+            if (clazz != null) {
+                // clazz.getName() != classname if classname is "[L<name>;".
+                if (useCache)
+                    cacheCtClass(clazz.getName(), clazz, false);
+    
+                return clazz;
+            }
         }
 
         if (childFirstLookup && parent != null)

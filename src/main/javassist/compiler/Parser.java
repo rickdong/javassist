@@ -168,15 +168,51 @@ public final class Parser implements TokenId {
         ASTList list = null;
         while (true) {
             t = lex.lookAhead();
-            if (t == ABSTRACT || t == FINAL || t == PUBLIC || t == PROTECTED
-                || t == PRIVATE || t == SYNCHRONIZED || t == STATIC
-                || t == VOLATILE || t == TRANSIENT || t == STRICT)
-                list = new ASTList(new Keyword(lex.get()), list);
-            else
-                break;
+            switch(t){
+                case ABSTRACT:
+                    lex.get();
+                    list = new ASTList(Keyword.ABSTRACT, list);
+                    break;
+                case FINAL:
+                    lex.get();
+                    list = new ASTList(Keyword.FINAL, list);
+                    break;
+                case PUBLIC:
+                    lex.get();
+                    list = new ASTList(Keyword.PUBLIC, list);
+                    break;
+                case PROTECTED:
+                    lex.get();
+                    list = new ASTList(Keyword.PROTECTED, list);
+                    break;
+                case PRIVATE:
+                    lex.get();
+                    list = new ASTList(Keyword.PRIVATE, list);
+                    break;
+                case SYNCHRONIZED:
+                    lex.get();
+                    list = new ASTList(Keyword.SYNCHRONIZED, list);
+                    break;
+                case STATIC:
+                    lex.get();
+                    list = new ASTList(Keyword.STATIC, list);
+                    break;
+                case VOLATILE:
+                    lex.get();
+                    list = new ASTList(Keyword.VOLATILE, list);
+                    break;
+                case TRANSIENT:
+                    lex.get();
+                    list = new ASTList(Keyword.TRANSIENT, list);
+                    break;
+                case STRICT:
+                    lex.get();
+                    list = new ASTList(Keyword.STRICT, list);
+                    break;
+                default:
+                    return list;
+            }
         }
-
-        return list;
     }
 
     /* formal.type : ( build-in-type | class.type ) array.dimension
@@ -391,7 +427,7 @@ public final class Parser implements TokenId {
      *              | CASE const.expression ":"
      */
     private Stmnt parseSwitch(SymbolTable tbl) throws CompileError {
-        int t = lex.get();	// SWITCH
+        int t = lex.get();  // SWITCH
         ASTree expr = parseParExpression(tbl);
         Stmnt body = parseSwitchBlock(tbl);
         return new Stmnt(t, expr, body);
@@ -451,7 +487,7 @@ public final class Parser implements TokenId {
      *     SYNCHRONIZED "(" expression ")" block.statement
      */
     private Stmnt parseSynchronized(SymbolTable tbl) throws CompileError {
-        int t = lex.get();	// SYNCHRONIZED
+        int t = lex.get();  // SYNCHRONIZED
         if (lex.get() != '(')
             throw new SyntaxError(lex);
 
@@ -1095,7 +1131,7 @@ public final class Parser implements TokenId {
     {
         String cname = toClassName(className);
         if (dim > 0) {
-            StringBuffer sbuf = new StringBuffer();
+            StringBuilder sbuf = new StringBuilder();
             while (dim-- > 0)
                 sbuf.append('[');
 
@@ -1183,12 +1219,12 @@ public final class Parser implements TokenId {
     private String toClassName(ASTree name)
         throws CompileError
     {
-        StringBuffer sbuf = new StringBuffer();
+        StringBuilder sbuf = new StringBuilder();
         toClassName(name, sbuf);
         return sbuf.toString();
     }
 
-    private void toClassName(ASTree name, StringBuffer sbuf)
+    private void toClassName(ASTree name, StringBuilder sbuf)
         throws CompileError
     {
         if (name instanceof Symbol) {
@@ -1226,11 +1262,15 @@ public final class Parser implements TokenId {
 
         switch (t = lex.get()) {
         case THIS :
+            return Keyword.THIS;
         case SUPER :
+            return Keyword.SUPER;
         case TRUE :
+            return Keyword.TRUE;
         case FALSE :
+            return Keyword.FALSE;
         case NULL :
-            return new Keyword(t);
+            return Keyword.NULL;
         case Identifier :
             name = lex.getString();
             decl = tbl.lookup(name);

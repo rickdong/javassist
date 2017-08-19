@@ -467,7 +467,7 @@ public class ProxyFactory {
 
     public String getKey(Class superClass, Class[] interfaces, byte[] signature, boolean useWriteReplace)
     {
-        StringBuffer sbuf = new StringBuffer();
+        StringBuilder sbuf = new StringBuilder();
         if (superClass != null){
             sbuf.append(superClass.getName());
         }

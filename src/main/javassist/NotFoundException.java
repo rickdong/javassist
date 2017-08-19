@@ -19,7 +19,7 @@ package javassist;
 /**
  * Signals that something could not be found.
  */
-public class NotFoundException extends Exception {
+public class NotFoundException extends NoStackTraceException {
     public NotFoundException(String msg) {
         super(msg);
     }

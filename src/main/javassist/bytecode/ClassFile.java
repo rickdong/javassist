@@ -20,11 +20,17 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 
 import javassist.CannotCompileException;
+import javassist.util.CollectionUtils;
 
 /**
  * <code>ClassFile</code> represents a Java <code>.class</code> file, which
@@ -55,18 +61,21 @@ import javassist.CannotCompileException;
  * @see javassist.CtClass#getClassFile()
  * @see javassist.ClassPool#makeClass(ClassFile)
  */
-public final class ClassFile {
+public final class ClassFile implements AttributeChangeListener {
     int major, minor; // version number
     ConstPool constPool;
     int thisClass;
     int accessFlags;
     int superClass;
     int[] interfaces;
-    ArrayList fields;
-    ArrayList methods;
-    ArrayList attributes;
+    Map<String, FieldInfo> fields; // field name to fieldInfo
+    List<FieldInfo> fields2;
+    Map<String, List<MethodInfo>> methods; // method name -> set of methodInfo
+    List<MethodInfo> methods2;
+    Map<String, AttributeInfo> attributes;
     String thisclassname; // not JVM-internal name
     String[] cachedInterfaces;
+    Set<String> cacheInterfaces2 = new HashSet<String>();
     String cachedSuperclass;
 
     /**
@@ -186,13 +195,16 @@ public final class ClassFile {
 
         initSuperclass(superclass);
         interfaces = null;
-        fields = new ArrayList();
-        methods = new ArrayList();
+        fields = new LinkedHashMap<String, FieldInfo>();
+        fields2 = new ArrayList<FieldInfo>();
+        methods = new LinkedHashMap<String, List<MethodInfo>>();
+        methods2 = new ArrayList<MethodInfo>();
         thisclassname = classname;
 
-        attributes = new ArrayList();
-        attributes.add(new SourceFileAttribute(constPool,
-                getSourcefileName(thisclassname)));
+        attributes = new LinkedHashMap<String, AttributeInfo>();
+        SourceFileAttribute sa = new SourceFileAttribute(constPool,
+                getSourcefileName(thisclassname));
+        attributes.put(sa.getName(), sa);
     }
 
     private void initSuperclass(String superclass) {
@@ -220,20 +232,20 @@ public final class ClassFile {
      * method recreates a constant pool.
      */
     public void compact() {
-        ConstPool cp = compact0();
-        ArrayList list = methods;
-        int n = list.size();
-        for (int i = 0; i < n; ++i) {
-            MethodInfo minfo = (MethodInfo)list.get(i);
-            minfo.compact(cp);
-        }
-
-        list = fields;
-        n = list.size();
-        for (int i = 0; i < n; ++i) {
-            FieldInfo finfo = (FieldInfo)list.get(i);
-            finfo.compact(cp);
-        }
+        final ConstPool cp = compact0();
+        loopMethods(new MethodInfoCallback() {
+            @Override
+            public void onInfo(MethodInfo info) {
+                info.compact(cp);
+            }
+        });
+        
+        loopFields(new FieldInfoCallback(){
+            @Override
+            public void onInfo(FieldInfo info) {
+                info.compact(cp);
+            }
+        });
 
         attributes = AttributeInfo.copyAll(attributes, cp);
         constPool = cp;
@@ -263,45 +275,73 @@ public final class ClassFile {
      * constructed).
      */
     public void prune() {
-        ConstPool cp = compact0();
-        ArrayList newAttributes = new ArrayList();
+        final ConstPool cp = compact0();
+        Map<String, AttributeInfo> newAttributes = new LinkedHashMap<String, AttributeInfo>();
         AttributeInfo invisibleAnnotations
             = getAttribute(AnnotationsAttribute.invisibleTag);
         if (invisibleAnnotations != null) {
             invisibleAnnotations = invisibleAnnotations.copy(cp, null);
-            newAttributes.add(invisibleAnnotations);
+            newAttributes.put(invisibleAnnotations.getName(), invisibleAnnotations);
         }
 
         AttributeInfo visibleAnnotations
             = getAttribute(AnnotationsAttribute.visibleTag);
         if (visibleAnnotations != null) {
             visibleAnnotations = visibleAnnotations.copy(cp, null);
-            newAttributes.add(visibleAnnotations);
+            newAttributes.put(visibleAnnotations.getName(), visibleAnnotations);
         }
 
         AttributeInfo signature 
             = getAttribute(SignatureAttribute.tag);
         if (signature != null) {
             signature = signature.copy(cp, null);
-            newAttributes.add(signature);
+            newAttributes.put(signature.getName(), signature);
         }
         
-        ArrayList list = methods;
-        int n = list.size();
-        for (int i = 0; i < n; ++i) {
-            MethodInfo minfo = (MethodInfo)list.get(i);
-            minfo.prune(cp);
-        }
-
-        list = fields;
-        n = list.size();
-        for (int i = 0; i < n; ++i) {
-            FieldInfo finfo = (FieldInfo)list.get(i);
-            finfo.prune(cp);
-        }
+        loopMethods(new MethodInfoCallback() {
+            @Override
+            public void onInfo(MethodInfo info) {
+                info.prune(cp);
+            }
+        });
+        
+        loopFields(new FieldInfoCallback(){
+            @Override
+            public void onInfo(FieldInfo info) {
+                info.prune(cp);
+            }
+        });
 
         attributes = newAttributes;
         constPool = cp;
+    }
+    
+    public static interface MethodInfoCallback {
+
+        void onInfo(MethodInfo info);
+
+    }
+
+    public static interface FieldInfoCallback {
+        void onInfo(FieldInfo info);
+    }
+    
+    public void loopMethods(MethodInfoCallback cb) {
+        List<MethodInfo> list = methods2;
+        int size = list.size();
+        for (int i = 0; i < size; i++) {
+            MethodInfo info = list.get(i);
+            cb.onInfo(info);
+        }
+    }
+
+    public void loopFields(FieldInfoCallback cb) {
+        List<FieldInfo> list = fields2;
+        int size = list.size();
+        for (int i = 0; i < size; i++) {
+            FieldInfo info = list.get(i);
+            cb.onInfo(info);
+        }
     }
 
     /**
@@ -421,17 +461,25 @@ public final class ClassFile {
         if (superclass == null)
             superclass = "java.lang.Object";
 
+        this.superClass = constPool.addClassInfo(superclass);
+        final String finalSuperClass = superclass;
         try {
-            this.superClass = constPool.addClassInfo(superclass);
-            ArrayList list = methods;
-            int n = list.size();
-            for (int i = 0; i < n; ++i) {
-                MethodInfo minfo = (MethodInfo)list.get(i);
-                minfo.setSuperclass(superclass);
+            loopMethods(new MethodInfoCallback() {
+                @Override
+                public void onInfo(MethodInfo info) {
+                    try {
+                        info.setSuperclass(finalSuperClass);
+                    } catch (BadBytecode e) {
+                        throw new RuntimeException(new CannotCompileException(e));
+                    }
+                }
+            });
+        } catch (RuntimeException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof CannotCompileException) {
+                throw (CannotCompileException) cause;
             }
-        }
-        catch (BadBytecode e) {
-            throw new CannotCompileException(e);
+            throw ex;
         }
         cachedSuperclass = superclass;
     }
@@ -451,9 +499,6 @@ public final class ClassFile {
      *            the substituted class name
      */
     public final void renameClass(String oldname, String newname) {
-        ArrayList list;
-        int n;
-
         if (oldname.equals(newname))
             return;
 
@@ -465,23 +510,26 @@ public final class ClassFile {
         constPool.renameClass(oldname, newname);
 
         AttributeInfo.renameClass(attributes, oldname, newname);
-        list = methods;
-        n = list.size();
-        for (int i = 0; i < n; ++i) {
-            MethodInfo minfo = (MethodInfo)list.get(i);
-            String desc = minfo.getDescriptor();
-            minfo.setDescriptor(Descriptor.rename(desc, oldname, newname));
-            AttributeInfo.renameClass(minfo.getAttributes(), oldname, newname);
-        }
-
-        list = fields;
-        n = list.size();
-        for (int i = 0; i < n; ++i) {
-            FieldInfo finfo = (FieldInfo)list.get(i);
-            String desc = finfo.getDescriptor();
-            finfo.setDescriptor(Descriptor.rename(desc, oldname, newname));
-            AttributeInfo.renameClass(finfo.getAttributes(), oldname, newname);
-        }
+        
+        final String fOldName = oldname;
+        final String fNewName = newname;
+        loopMethods(new MethodInfoCallback() {
+            @Override
+            public void onInfo(MethodInfo info) {
+                String desc = info.getDescriptor();
+                info.setDescriptor(Descriptor.rename(desc, fOldName, fNewName));
+                AttributeInfo.renameClass(info.getAttributes(), fOldName, fNewName);
+            }
+        });
+        
+        loopFields(new FieldInfoCallback() {
+            @Override
+            public void onInfo(FieldInfo info) {
+                String desc = info.getDescriptor();
+                info.setDescriptor(Descriptor.rename(desc, fOldName, fNewName));
+                AttributeInfo.renameClass(info.getAttributes(), fOldName, fNewName);
+            }
+        });
     }
 
     /**
@@ -493,7 +541,7 @@ public final class ClassFile {
      *            representation like <code>java/lang/Object</code>.
      * @see #renameClass(String,String)
      */
-    public final void renameClass(Map classnames) {
+    public final void renameClass(final Map classnames) {
         String jvmNewThisName = (String)classnames.get(Descriptor
                 .toJvmName(thisclassname));
         if (jvmNewThisName != null)
@@ -502,50 +550,53 @@ public final class ClassFile {
         constPool.renameClass(classnames);
 
         AttributeInfo.renameClass(attributes, classnames);
-        ArrayList list = methods;
-        int n = list.size();
-        for (int i = 0; i < n; ++i) {
-            MethodInfo minfo = (MethodInfo)list.get(i);
-            String desc = minfo.getDescriptor();
-            minfo.setDescriptor(Descriptor.rename(desc, classnames));
-            AttributeInfo.renameClass(minfo.getAttributes(), classnames);
-        }
-
-        list = fields;
-        n = list.size();
-        for (int i = 0; i < n; ++i) {
-            FieldInfo finfo = (FieldInfo)list.get(i);
-            String desc = finfo.getDescriptor();
-            finfo.setDescriptor(Descriptor.rename(desc, classnames));
-            AttributeInfo.renameClass(finfo.getAttributes(), classnames);
-        }
+        
+        loopMethods(new MethodInfoCallback() {
+            @Override
+            public void onInfo(MethodInfo info) {
+                String desc = info.getDescriptor();
+                info.setDescriptor(Descriptor.rename(desc, classnames));
+                AttributeInfo.renameClass(info.getAttributes(), classnames);
+            }
+        });
+        
+        loopFields(new FieldInfoCallback() {
+            @Override
+            public void onInfo(FieldInfo info) {
+                String desc = info.getDescriptor();
+                info.setDescriptor(Descriptor.rename(desc, classnames));
+                AttributeInfo.renameClass(info.getAttributes(), classnames);
+            }
+        });
     }
 
     /**
      * Internal-use only.
      * <code>CtClass.getRefClasses()</code> calls this method. 
      */
-    public final void getRefClasses(Map classnames) {
+    public final void getRefClasses(final Map classnames) {
         constPool.renameClass(classnames);
 
         AttributeInfo.getRefClasses(attributes, classnames);
-        ArrayList list = methods;
-        int n = list.size();
-        for (int i = 0; i < n; ++i) {
-            MethodInfo minfo = (MethodInfo)list.get(i);
-            String desc = minfo.getDescriptor();
-            Descriptor.rename(desc, classnames);
-            AttributeInfo.getRefClasses(minfo.getAttributes(), classnames);
-        }
-
-        list = fields;
-        n = list.size();
-        for (int i = 0; i < n; ++i) {
-            FieldInfo finfo = (FieldInfo)list.get(i);
-            String desc = finfo.getDescriptor();
-            Descriptor.rename(desc, classnames);
-            AttributeInfo.getRefClasses(finfo.getAttributes(), classnames);
-        }
+        
+        loopMethods(new MethodInfoCallback() {
+            @Override
+            public void onInfo(MethodInfo info) {
+                String desc = info.getDescriptor();
+                Descriptor.rename(desc, classnames);
+                AttributeInfo.getRefClasses(info.getAttributes(), classnames);
+            }
+        });
+        
+        loopFields(new FieldInfoCallback() {
+            @Override
+            public void onInfo(FieldInfo info) {
+                String desc = info.getDescriptor();
+                Descriptor.rename(desc, classnames);
+                AttributeInfo.getRefClasses(info.getAttributes(), classnames);
+            }
+        });
+        
     }
 
     /**
@@ -562,8 +613,10 @@ public final class ClassFile {
         else {
             int n = interfaces.length;
             String[] list = new String[n];
-            for (int i = 0; i < n; ++i)
+            for (int i = 0; i < n; ++i) {
                 list[i] = constPool.getClassInfo(interfaces[i]);
+                cacheInterfaces2.add(list[i]);
+            }
 
             rtn = list;
         }
@@ -571,6 +624,14 @@ public final class ClassFile {
         cachedInterfaces = rtn;
         return rtn;
     }
+    
+    public boolean containsInterface(String name) {
+        if (cacheInterfaces2 == null) {
+            getInterfaces();
+        }
+        return cacheInterfaces2.contains(name);
+    }
+    
 
     /**
      * Sets the interfaces.
@@ -580,6 +641,7 @@ public final class ClassFile {
      */
     public void setInterfaces(String[] nameList) {
         cachedInterfaces = null;
+        cacheInterfaces2.clear();
         if (nameList != null) {
             int n = nameList.length;
             interfaces = new int[n];
@@ -593,6 +655,7 @@ public final class ClassFile {
      */
     public void addInterface(String name) {
         cachedInterfaces = null;
+        cacheInterfaces2.clear();
         int info = constPool.addClassInfo(name);
         if (interfaces == null) {
             interfaces = new int[1];
@@ -608,25 +671,15 @@ public final class ClassFile {
     }
 
     /**
-     * Returns all the fields declared in the class.
-     * 
-     * @return a list of <code>FieldInfo</code>.
-     * @see FieldInfo
-     */
-    public List getFields() {
-        return fields;
-    }
-
-    /**
      * Appends a field to the class.
      *
      * @throws DuplicateMemberException         when the field is already included.
      */
     public void addField(FieldInfo finfo) throws DuplicateMemberException {
         testExistingField(finfo.getName(), finfo.getDescriptor());
-        fields.add(finfo);
+        addField2(finfo);
     }
-
+    
     /**
      * Just appends a field to the class.
      * It does not check field duplication.
@@ -636,28 +689,95 @@ public final class ClassFile {
      * @since 3.13
      */
     public final void addField2(FieldInfo finfo) {
-        fields.add(finfo);
+        FieldInfo prev = (FieldInfo) fields.put(finfo.getName(), finfo);
+        if (prev != null) {
+            prev.removeChangeListener(this);
+            fields2.remove(prev);
+        }
+        fields2.add(finfo);
+        finfo.addChangeListener(this);
+    }
+    
+    @Override
+    public void onChange(Object src, String name, Object oldValue, Object newValue) {
+        if (AttributeObservable.NAME.equals(name)) {
+            if (src instanceof FieldInfo) {
+                fields.remove(oldValue);
+                fields.put((String)newValue, (FieldInfo) src);
+            }
+            else if(src instanceof MethodInfo){
+                List<MethodInfo> ms = methods.get(oldValue);
+                List<MethodInfo> ms1 = methods.get(newValue);
+                if (ms1 == null) {
+                    ms1 = new ArrayList<MethodInfo>();
+                    methods.put((String) newValue, ms1);
+                }
+                ms.remove(src);
+                
+                Iterator<MethodInfo> it = ms.iterator();
+                while (it.hasNext()) {
+                    MethodInfo mi = it.next();
+                    if (mi.getName().equals(newValue)) {
+                        it.remove();
+                        ms1.add(mi);
+                    }
+                }
+                it = ms1.iterator();
+                while (it.hasNext()) {
+                    MethodInfo mi = it.next();
+                    if (mi.getName().equals(oldValue)) {
+                        it.remove();
+                        ms.add(mi);
+                    }
+                }
+                ms1.add((MethodInfo) src);
+                if (ms.isEmpty()) {
+                    methods.remove(oldValue);
+                }
+            }
+        }
     }
 
     private void testExistingField(String name, String descriptor)
             throws DuplicateMemberException {
-        ListIterator it = fields.listIterator(0);
-        while (it.hasNext()) {
-            FieldInfo minfo = (FieldInfo)it.next();
-            if (minfo.getName().equals(name))
-                throw new DuplicateMemberException("duplicate field: " + name);
+        if(fields.containsKey(name)){
+            throw new DuplicateMemberException("duplicate field: " + name);
         }
     }
 
-    /**
-     * Returns all the methods declared in the class.
-     * 
-     * @return a list of <code>MethodInfo</code>.
-     * @see MethodInfo
-     */
-    public List getMethods() {
-        return methods;
+    public boolean removeMethod(MethodInfo mi){
+        List<MethodInfo> ms = methods.get(mi.getName());
+        if(ms == null || ms.isEmpty()){
+            return false;
+        }
+        if(ms.remove(mi)){
+            methods2.remove(mi);
+            mi.removeChangeListener(this);
+            if(ms.isEmpty()){
+                methods.remove(mi.getName());
+            }
+            return true;
+        }
+        return false;
     }
+    
+    public boolean removeField(FieldInfo fi){
+         if(fields.remove(fi.getName()) != null){
+             fields2.remove(fi);
+             return true;
+         }
+         return false;
+    }
+    
+    public FieldInfo getField(String name){
+        return fields.get(name);
+    }
+    
+    public List<MethodInfo> getMethods(String name){
+        List<MethodInfo> ret = methods.get(name);
+        return ret == null ? Collections.<MethodInfo>emptyList() : Collections.unmodifiableList(ret);
+    }
+    
 
     /**
      * Returns the method with the specified name. If there are multiple methods
@@ -666,15 +786,8 @@ public final class ClassFile {
      * @return null if no such method is found.
      */
     public MethodInfo getMethod(String name) {
-        ArrayList list = methods;
-        int n = list.size();
-        for (int i = 0; i < n; ++i) {
-            MethodInfo minfo = (MethodInfo)list.get(i);
-            if (minfo.getName().equals(name))
-                return minfo;
-        }
-
-        return null;
+        List<MethodInfo> ms = getMethods(name);
+        return ms.isEmpty() ? null : ms.get(0);
     }
 
     /**
@@ -694,7 +807,7 @@ public final class ClassFile {
      */
     public void addMethod(MethodInfo minfo) throws DuplicateMemberException {
         testExistingMethod(minfo);
-        methods.add(minfo);
+        addMethod2(minfo);
     }
 
     /**
@@ -706,24 +819,30 @@ public final class ClassFile {
      * @since 3.13
      */
     public final void addMethod2(MethodInfo minfo) {
-        methods.add(minfo);
+        CollectionUtils.addToKeyedList(minfo.getName(), minfo, methods);
+        methods2.add(minfo);
+        minfo.addChangeListener(this);
     }
-
+    
     private void testExistingMethod(MethodInfo newMinfo)
         throws DuplicateMemberException
     {
         String name = newMinfo.getName();
         String descriptor = newMinfo.getDescriptor();
-        ListIterator it = methods.listIterator(0);
-        while (it.hasNext())
-            if (isDuplicated(newMinfo, name, descriptor, (MethodInfo)it.next(), it))
+        List<MethodInfo> ms = methods.get(name);
+        if (ms == null || ms.isEmpty()) {
+            return;
+        }
+        for(MethodInfo mi : ms.toArray(new MethodInfo[0])){
+            if (isDuplicated(newMinfo, name, descriptor, mi)){
                 throw new DuplicateMemberException("duplicate method: " + name
-                                                   + " in " + this.getName());
+                        + " in " + this.getName());
+            }
+        }
     }
 
-    private static boolean isDuplicated(MethodInfo newMethod, String newName,
-                                        String newDesc, MethodInfo minfo,
-                                        ListIterator it)
+    private boolean isDuplicated(MethodInfo newMethod, String newName,
+                                        String newDesc, MethodInfo minfo)
     {
         if (!minfo.getName().equals(newName))
             return false;
@@ -738,7 +857,7 @@ public final class ClassFile {
             else {
             	// if the bridge method with the same signature
             	// already exists, replace it.
-                it.remove();
+                removeMethod(minfo);
                 return false;
             }
         }
@@ -763,7 +882,7 @@ public final class ClassFile {
      * @return a list of <code>AttributeInfo</code> objects.
      * @see AttributeInfo
      */
-    public List getAttributes() {
+    public Map<String, AttributeInfo> getAttributes() {
         return attributes;
     }
 
@@ -781,15 +900,8 @@ public final class ClassFile {
      * @see #getAttributes()
      */
     public AttributeInfo getAttribute(String name) {
-        ArrayList list = attributes;
-        int n = list.size();
-        for (int i = 0; i < n; ++i) {
-            AttributeInfo ai = (AttributeInfo)list.get(i);
-            if (ai.getName().equals(name))
-                return ai;
-        }
-
-        return null;
+        Map<String, AttributeInfo> list = attributes;
+        return list.get(name);
     }
 
     /**
@@ -810,8 +922,7 @@ public final class ClassFile {
      * @see #getAttributes()
      */
     public void addAttribute(AttributeInfo info) {
-        AttributeInfo.remove(attributes, info.getName());
-        attributes.add(info);
+        attributes.put(info.getName(), info);
     }
 
     /**
@@ -852,16 +963,18 @@ public final class ClassFile {
 
         ConstPool cp = constPool;
         n = in.readUnsignedShort();
-        fields = new ArrayList();
+        fields = new LinkedHashMap<String, FieldInfo>();
+        fields2 = new ArrayList<FieldInfo>();
         for (i = 0; i < n; ++i)
             addField2(new FieldInfo(cp, in));
 
         n = in.readUnsignedShort();
-        methods = new ArrayList();
+        methods = new LinkedHashMap<String, List<MethodInfo>>();
+        methods2 = new ArrayList<MethodInfo>();
         for (i = 0; i < n; ++i)
             addMethod2(new MethodInfo(cp, in));
 
-        attributes = new ArrayList();
+        attributes = new LinkedHashMap<String, AttributeInfo>();
         n = in.readUnsignedShort();
         for (i = 0; i < n; ++i)
             addAttribute(AttributeInfo.read(cp, in));
@@ -872,7 +985,7 @@ public final class ClassFile {
     /**
      * Writes a class file represented by this object into an output stream.
      */
-    public void write(DataOutputStream out) throws IOException {
+    public void write(final DataOutputStream out) throws IOException {
         int i, n;
 
         out.writeInt(0xCAFEBABE); // magic
@@ -892,22 +1005,39 @@ public final class ClassFile {
         for (i = 0; i < n; ++i)
             out.writeShort(interfaces[i]);
 
-        ArrayList list = fields;
-        n = list.size();
+        n = fields2.size();
         out.writeShort(n);
-        for (i = 0; i < n; ++i) {
-            FieldInfo finfo = (FieldInfo)list.get(i);
-            finfo.write(out);
+        try {
+            loopFields(new FieldInfoCallback() {
+                @Override
+                public void onInfo(FieldInfo info) {
+                    try {
+                        info.write(out);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+            
+            n = methods2.size();
+            out.writeShort(n);
+            loopMethods(new MethodInfoCallback() {
+                @Override
+                public void onInfo(MethodInfo info) {
+                    try {
+                        info.write(out);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+        } catch (RuntimeException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof IOException) {
+                throw (IOException) cause;
+            }
+            throw ex;
         }
-
-        list = methods;
-        n = list.size();
-        out.writeShort(n);
-        for (i = 0; i < n; ++i) {
-            MethodInfo minfo = (MethodInfo)list.get(i);
-            minfo.write(out);
-        }
-
         out.writeShort(attributes.size());
         AttributeInfo.writeAll(attributes, out);
     }

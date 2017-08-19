@@ -26,6 +26,7 @@ import java.security.ProtectionDomain;
 
 import javassist.CannotCompileException;
 import javassist.bytecode.ClassFile;
+import javassist.util.JvmNamesCache;
 
 /**
  * A helper class for implementing <code>ProxyFactory</code>.
@@ -165,7 +166,7 @@ public class FactoryHelper {
             throws CannotCompileException, IOException {
         String classname = cf.getName();
         String filename = directoryName + File.separatorChar
-                + classname.replace('.', File.separatorChar) + ".class";
+                + JvmNamesCache.javaToJvmName(classname) + ".class";
         int pos = filename.lastIndexOf(File.separatorChar);
         if (pos > 0) {
             String dir = filename.substring(0, pos);

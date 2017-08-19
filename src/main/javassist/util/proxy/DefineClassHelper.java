@@ -103,14 +103,16 @@ public class DefineClassHelper {
     static Class<?> toPublicClass(String className, byte[] bcode)
         throws CannotCompileException
     {
-        try {
-            Lookup lookup = MethodHandles.lookup();
-            lookup = lookup.dropLookupMode(java.lang.invoke.MethodHandles.Lookup.PRIVATE);
-            return lookup.defineClass(bcode);
-        }
-        catch (Throwable t) {
-            throw new CannotCompileException(t);
-        }
+        // uncomment when move to java9, for now throw exception
+        throw new CannotCompileException("uncomment when move to java9, for now throw exception");
+//        try {
+//            Lookup lookup = MethodHandles.lookup();
+//            lookup = lookup.dropLookupMode(java.lang.invoke.MethodHandles.Lookup.PRIVATE);
+//            return lookup.defineClass(bcode);
+//        }
+//        catch (Throwable t) {
+//            throw new CannotCompileException(t);
+//        }
     }
 
     private static Class<?> toClass2(String cname, ClassLoader loader,

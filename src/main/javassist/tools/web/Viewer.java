@@ -19,6 +19,8 @@ package javassist.tools.web;
 import java.io.*;
 import java.net.*;
 
+import javassist.util.JvmNamesCache;
+
 /**
  * A sample applet viewer.
  *
@@ -162,7 +164,7 @@ public class Viewer extends ClassLoader {
     {
         byte[] b;
         URL url = new URL("http", server, port,
-                          "/" + classname.replace('.', '/') + ".class");
+                          "/" + JvmNamesCache.javaToJvmName(classname) + ".class");
         URLConnection con = url.openConnection();
         con.connect();
         int size = con.getContentLength();

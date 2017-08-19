@@ -18,10 +18,12 @@ package javassist.compiler;
 
 import javassist.CtClass;
 import javassist.CtField;
+
 import javassist.ClassPool;
 import javassist.Modifier;
 import javassist.NotFoundException;
 import javassist.compiler.ast.*;
+import javassist.util.JvmNamesCache;
 import javassist.bytecode.*;
 
 public class TypeChecker extends Visitor implements Opcode, TokenId {
@@ -53,7 +55,7 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
      */
     protected static String argTypesToString(int[] types, int[] dims,
                                              String[] cnames) {
-        StringBuffer sbuf = new StringBuffer();
+        StringBuilder sbuf = new StringBuilder();
         sbuf.append('(');
         int n = types.length;
         if (n > 0) {
@@ -75,11 +77,11 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
      * Converts a tuple of exprType, arrayDim, and className
      * into a String object.
      */
-    protected static StringBuffer typeToString(StringBuffer sbuf,
+    protected static StringBuilder typeToString(StringBuilder sbuf,
                                         int type, int dim, String cname) {
         String s;
         if (type == CLASS)
-            s = MemberResolver.jvmToJavaName(cname);
+            s = JvmNamesCache.jvmToJavaName(cname);
         else if (type == NULL)
             s = "Object";
         else
@@ -112,14 +114,14 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
      * Returns the JVM-internal representation of this class name.
      */
     protected String getThisName() {
-        return MemberResolver.javaToJvmName(thisClass.getName());
+        return JvmNamesCache.javaToJvmName(thisClass.getName());
     }
 
     /**
      * Returns the JVM-internal representation of this super class name.
      */
     protected String getSuperName() throws CompileError {
-        return MemberResolver.javaToJvmName(
+        return JvmNamesCache.javaToJvmName(
                         MemberResolver.getSuperclass(thisClass).getName());
     }
 
@@ -149,7 +151,7 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
             atMethodCallCore(clazz, MethodInfo.nameInit, args);
             exprType = CLASS;
             arrayDim = 0;
-            className = MemberResolver.javaToJvmName(cname);
+            className = JvmNamesCache.javaToJvmName(cname);
         }
     }
 
@@ -312,7 +314,7 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
                 Expr e = atPlusExpr(expr);
                 if (e != null) {
                     /* String concatenation has been translated into
-                     * an expression using StringBuffer.
+                     * an expression using StringBuilder.
                      */
                     e = CallExpr.makeCall(Expr.make('.', e,
                                             new Member("toString")), null);
@@ -340,7 +342,7 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
 
     /* EXPR must be a + expression.
      * atPlusExpr() returns non-null if the given expression is string
-     * concatenation.  The returned value is "new StringBuffer().append..".
+     * concatenation.  The returned value is "new StringBuilder().append..".
      */
     private Expr atPlusExpr(BinExpr expr) throws CompileError {
         ASTree left = expr.oprand1();
@@ -358,7 +360,7 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
                 right.accept(this);
                 exprType = CLASS;
                 arrayDim = 0;
-                className = "java/lang/StringBuffer";
+                className = "java/lang/StringBuilder";
                 return makeAppendCall(newExpr, right);
             }
         }
@@ -377,11 +379,11 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
             || (exprType == CLASS && arrayDim == 0
                 && jvmJavaLangString.equals(className))) {
             ASTList sbufClass = ASTList.make(new Symbol("java"),
-                            new Symbol("lang"), new Symbol("StringBuffer"));
+                            new Symbol("lang"), new Symbol("StringBuilder"));
             ASTree e = new NewExpr(sbufClass, null);
             exprType = CLASS;
             arrayDim = 0;
-            className = "java/lang/StringBuffer";
+            className = "java/lang/StringBuilder";
             return makeAppendCall(makeAppendCall(e, left), right);
         }
         else {
@@ -471,8 +473,7 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
             return new IntConst(((Number)value).longValue(), token);
         }
         else if (value instanceof Boolean)
-            return new Keyword(((Boolean)value).booleanValue()
-                               ? TokenId.TRUE : TokenId.FALSE);
+            return (Boolean) value ? Keyword.TRUE : Keyword.FALSE;
         else
             return null;
     }
@@ -673,7 +674,7 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
                         arrayDim = 0;
                         className = nfe.getField(); // JVM-internal
                         e.setOperator(MEMBER);
-                        e.setOprand1(new Symbol(MemberResolver.jvmToJavaName(
+                        e.setOprand1(new Symbol(JvmNamesCache.jvmToJavaName(
                                                                 className)));
                     }
 
@@ -733,7 +734,6 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
         int[] dims = new int[nargs];
         String[] cnames = new String[nargs];
         atMethodArgs(args, types, dims, cnames);
-
         MemberResolver.Method found
             = resolver.lookupMethod(targetClass, thisClass, thisMethod,
                                     mname, types, dims, cnames);
@@ -912,7 +912,7 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
         Member fname = (Member)e.oprand2();
         CtField f = resolver.lookupFieldByJvmName2(jvmClassName, fname, e);
         e.setOperator(MEMBER);
-        e.setOprand1(new Symbol(MemberResolver.jvmToJavaName(jvmClassName)));
+        e.setOprand1(new Symbol(JvmNamesCache.jvmToJavaName(jvmClassName)));
         fname.setField(f);
         return f;
     }

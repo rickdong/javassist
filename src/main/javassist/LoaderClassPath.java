@@ -16,8 +16,14 @@
 
 package javassist;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import javassist.util.JvmNamesCache;
+
 import java.lang.ref.WeakReference;
 
 /**
@@ -66,14 +72,12 @@ public class LoaderClassPath implements ClassPath {
      * This method calls <code>getResourceAsStream(String)</code>
      * on the class loader.
      */
-    public InputStream openClassfile(String classname) throws NotFoundException {
-        String cname = classname.replace('.', '/') + ".class";
-        ClassLoader cl = (ClassLoader)clref.get();
-        if (cl == null)
-            return null;        // not found
-        else {
-            InputStream is = cl.getResourceAsStream(cname);
-            return is;
+    public InputStream openClassfile(String classname) {
+        URL url = find(classname);
+        try {
+            return url != null ? url.openStream() : null;
+        } catch (IOException e) {
+            return null;
         }
     }
 
@@ -85,15 +89,28 @@ public class LoaderClassPath implements ClassPath {
      * @return null if the class file could not be found. 
      */
     public URL find(String classname) {
-        String cname = classname.replace('.', '/') + ".class";
-        ClassLoader cl = (ClassLoader)clref.get();
-        if (cl == null)
-            return null;        // not found
+        URL url = CACHE.get(classname);
+        if (url != null) {
+            return url;
+        }
+        String cname = JvmNamesCache.javaToJvmName(classname) + ".class";
+        ClassLoader cl = (ClassLoader) clref.get();
+        if (cl == null) {
+            return null; // not found
+        }
         else {
-            URL url = cl.getResource(cname);
+            url = cl.getResource(cname);
+            if (url != null) {
+                URL prev = CACHE.putIfAbsent(classname, url);
+                if (prev != null) {
+                    url = prev;
+                }
+            }
             return url;
         }
     }
+    
+    private static final ConcurrentMap<String, URL> CACHE = new ConcurrentHashMap<String, URL>();
 
     /**
      * Closes this class path.

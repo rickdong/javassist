@@ -20,7 +20,6 @@ import javassist.CannotCompileException;
 import javassist.ClassPool;
 import javassist.CtBehavior;
 import javassist.CtClass;
-import javassist.CtConstructor;
 import javassist.CtPrimitiveType;
 import javassist.NotFoundException;
 import javassist.bytecode.AccessFlag;
@@ -97,29 +96,10 @@ public abstract class Expr implements Opcode {
      * Returns the constructor or method containing the expression.
      */
     public CtBehavior where() {
-        MethodInfo mi = thisMethod;
-        CtBehavior[] cb = thisClass.getDeclaredBehaviors();
-        for (int i = cb.length - 1; i >= 0; --i)
-            if (cb[i].getMethodInfo2() == mi)
-                return cb[i];
-
-        CtConstructor init = thisClass.getClassInitializer();
-        if (init != null && init.getMethodInfo2() == mi)
-            return init;
-
-        /* getDeclaredBehaviors() returns a list of methods/constructors.
-         * Although the list is cached in a CtClass object, it might be
-         * recreated for some reason.  Thus, the member name and the signature
-         * must be also checked.
-         */
-        for (int i = cb.length - 1; i >= 0; --i) {
-            if (thisMethod.getName().equals(cb[i].getMethodInfo2().getName())
-                && thisMethod.getDescriptor()
-                             .equals(cb[i].getMethodInfo2().getDescriptor())) {
-                return cb[i];
-            }
+        CtBehavior b = thisClass.where(thisMethod);
+        if (b != null) {
+            return b;
         }
-
         throw new RuntimeException("fatal: not found");
     }
 

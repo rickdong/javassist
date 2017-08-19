@@ -17,9 +17,10 @@
 package javassist.compiler;
 
 import javassist.CannotCompileException;
+import javassist.NoStackTraceException;
 import javassist.NotFoundException;
 
-public class CompileError extends Exception {
+public class CompileError extends NoStackTraceException {
     private Lex lex;
     private String reason;
 
