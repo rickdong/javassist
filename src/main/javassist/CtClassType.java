@@ -33,6 +33,7 @@ import java.util.Set;
 import javassist.bytecode.AccessFlag;
 import javassist.bytecode.AttributeInfo;
 import javassist.bytecode.AnnotationsAttribute;
+import javassist.bytecode.AttributeChangeListener;
 import javassist.bytecode.BadBytecode;
 import javassist.bytecode.Bytecode;
 import javassist.bytecode.ClassFile;
@@ -104,7 +105,7 @@ class CtClassType extends CtClass {
         qualifiedName = classfile.getName();
     }
 
-    protected void extendToString(StringBuffer buffer) {
+    protected void extendToString(StringBuilder buffer) {
         if (wasChanged)
             buffer.append("changed ");
 
@@ -150,7 +151,7 @@ class CtClassType extends CtClass {
         exToString(buffer, " methods=", memCache.getMethods());
     }
 
-    private void exToString(StringBuffer buffer, String msg,
+    private void exToString(StringBuilder buffer, String msg,
                             CtMember[] members) {
         buffer.append(msg);
         for(CtMember m : members){
@@ -310,16 +311,15 @@ class CtClassType extends CtClass {
         if (supername != null && supername.equals(cname))
             return true;
 
-        String[] ifs = file.getInterfaces();
-        int num = ifs.length;
-        for (i = 0; i < num; ++i)
-            if (ifs[i].equals(cname))
-                return true;
+        if(file.containsInterface(cname)){
+            return true;
+        }
 
         if (supername != null && classPool.get(supername).subtypeOf(clazz))
             return true;
 
-        for (i = 0; i < num; ++i)
+        String[] ifs = file.getInterfaces();
+        for (i = 0; i < ifs.length; ++i)
             if (classPool.get(ifs[i]).subtypeOf(clazz))
                 return true;
 
@@ -996,6 +996,11 @@ class CtClassType extends CtClass {
         return getMembers().getFieldByNameAndDescc(name, desc);
     }
 
+    @Override
+    public CtBehavior where(MethodInfo mi) {
+        return getMembers().where(mi);
+    }
+    
     public CtBehavior[] getDeclaredBehaviors() {
         CtMember.Cache memCache = getMembers();
         CtConstructor[] cons = memCache.getConstructors();
@@ -1131,6 +1136,19 @@ class CtClassType extends CtClass {
                                     + getName());
     }
 
+    public CtMethod getDeclaredMethod(String name, String desc) throws NotFoundException {
+        return getDeclaredMethodByNameAndDesc(name+" "+desc);
+    }
+    
+    @Override
+    public CtMethod getDeclaredMethodByNameAndDesc(String nameAndDesc) throws NotFoundException {
+        CtMethod mth = getMembers().getMethodByNameAndDesc(nameAndDesc);
+        if (mth != null) {
+            return mth;
+        }
+        throw new NotFoundException(nameAndDesc + " is not found in " + getName());
+    }
+    
     public CtMethod getDeclaredMethod(String name, CtClass[] params)
         throws NotFoundException
     {

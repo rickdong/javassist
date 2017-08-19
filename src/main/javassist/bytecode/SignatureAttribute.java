@@ -226,7 +226,7 @@ public class SignatureAttribute extends AttributeInfo {
          * Returns the string representation.
          */
         public String toString() {
-            StringBuffer sbuf = new StringBuffer();
+            StringBuilder sbuf = new StringBuilder();
 
             TypeParameter.toString(sbuf, params);
             sbuf.append(" extends ").append(superClass);
@@ -242,7 +242,7 @@ public class SignatureAttribute extends AttributeInfo {
          * Returns the encoded string representing the method type signature.
          */
         public String encode() {
-            StringBuffer sbuf = new StringBuffer();
+            StringBuilder sbuf = new StringBuilder();
             if (params.length > 0) {
                 sbuf.append('<');
                 for (int i = 0; i < params.length; i++)
@@ -315,7 +315,7 @@ public class SignatureAttribute extends AttributeInfo {
          * Returns the string representation.
          */
         public String toString() {
-            StringBuffer sbuf = new StringBuffer();
+            StringBuilder sbuf = new StringBuilder();
 
             TypeParameter.toString(sbuf, typeParams);
             sbuf.append(" (");
@@ -334,7 +334,7 @@ public class SignatureAttribute extends AttributeInfo {
          * Returns the encoded string representing the method type signature.
          */
         public String encode() {
-            StringBuffer sbuf = new StringBuffer();
+            StringBuilder sbuf = new StringBuilder();
             if (typeParams.length > 0) {
                 sbuf.append('<');
                 for (int i = 0; i < typeParams.length; i++)
@@ -425,7 +425,7 @@ public class SignatureAttribute extends AttributeInfo {
          * Returns the string representation.
          */
         public String toString() {
-            StringBuffer sbuf = new StringBuffer(getName());
+            StringBuilder sbuf = new StringBuilder(getName());
             if (superClass != null)
                 sbuf.append(" extends ").append(superClass.toString());
 
@@ -444,7 +444,7 @@ public class SignatureAttribute extends AttributeInfo {
             return sbuf.toString();
         }
 
-        static void toString(StringBuffer sbuf, TypeParameter[] tp) {
+        static void toString(StringBuilder sbuf, TypeParameter[] tp) {
             sbuf.append('<');
             for (int i = 0; i < tp.length; i++) {
                 if (i > 0)
@@ -456,7 +456,7 @@ public class SignatureAttribute extends AttributeInfo {
             sbuf.append('>');
         }
 
-        void encode(StringBuffer sb) {
+        void encode(StringBuilder sb) {
             sb.append(name);
             if (superClass == null)
                 sb.append(":Ljava/lang/Object;");
@@ -563,7 +563,7 @@ public class SignatureAttribute extends AttributeInfo {
                 return "? super " + type;
         }
 
-        static void encode(StringBuffer sb, TypeArgument[] args) {
+        static void encode(StringBuilder sb, TypeArgument[] args) {
             sb.append('<');
             for (int i = 0; i < args.length; i++) {
                 TypeArgument ta = args[i];
@@ -582,8 +582,8 @@ public class SignatureAttribute extends AttributeInfo {
      * Primitive types and object types.
      */
     public static abstract class Type {
-        abstract void encode(StringBuffer sb);
-        static void toString(StringBuffer sbuf, Type[] ts) {
+        abstract void encode(StringBuilder sb);
+        static void toString(StringBuilder sbuf, Type[] ts) {
             for (int i = 0; i < ts.length; i++) {
                 if (i > 0)
                     sbuf.append(", ");
@@ -638,7 +638,7 @@ public class SignatureAttribute extends AttributeInfo {
             return Descriptor.toClassName(Character.toString(descriptor));
         }
 
-        void encode(StringBuffer sb) {
+        void encode(StringBuilder sb) {
             sb.append(descriptor);
         }
     }
@@ -652,7 +652,7 @@ public class SignatureAttribute extends AttributeInfo {
          * Returns the encoded string representing the object type signature.
          */
         public String encode() {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             encode(sb);
             return sb.toString();
         }
@@ -731,7 +731,7 @@ public class SignatureAttribute extends AttributeInfo {
          * Returns the string representation.
          */
         public String toString() {
-            StringBuffer sbuf = new StringBuffer();
+            StringBuilder sbuf = new StringBuilder();
             ClassType parent = getDeclaringClass();
             if (parent != null)
                 sbuf.append(parent.toString()).append('.');
@@ -739,7 +739,7 @@ public class SignatureAttribute extends AttributeInfo {
             return toString2(sbuf);
         }
 
-        private String toString2(StringBuffer sbuf) {
+        private String toString2(StringBuilder sbuf) {
             sbuf.append(name);
             if (arguments != null) {
                 sbuf.append('<');
@@ -763,7 +763,7 @@ public class SignatureAttribute extends AttributeInfo {
          * then {@code foo.Bar$Baz} is returned.
          */
         public String jvmTypeName() {
-            StringBuffer sbuf = new StringBuffer();
+            StringBuilder sbuf = new StringBuilder();
             ClassType parent = getDeclaringClass();
             if (parent != null)
                 sbuf.append(parent.jvmTypeName()).append('$');
@@ -771,13 +771,13 @@ public class SignatureAttribute extends AttributeInfo {
             return toString2(sbuf);
         }
 
-        void encode(StringBuffer sb) {
+        void encode(StringBuilder sb) {
             sb.append('L');
             encode2(sb);
             sb.append(';');
         }
 
-        void encode2(StringBuffer sb) {
+        void encode2(StringBuilder sb) {
             ClassType parent = getDeclaringClass();
             if (parent != null) {
                 parent.encode2(sb);
@@ -855,14 +855,14 @@ public class SignatureAttribute extends AttributeInfo {
          * Returns the string representation.
          */
         public String toString() {
-            StringBuffer sbuf = new StringBuffer(componentType.toString());
+            StringBuilder sbuf = new StringBuilder(componentType.toString());
             for (int i = 0; i < dim; i++)
                 sbuf.append("[]");
 
             return sbuf.toString();
         }
 
-        void encode(StringBuffer sb) {
+        void encode(StringBuilder sb) {
             for (int i = 0; i < dim; i++)
                 sb.append('[');
 
@@ -903,7 +903,7 @@ public class SignatureAttribute extends AttributeInfo {
             return name;
         }
 
-        void encode(StringBuffer sb) {
+        void encode(StringBuilder sb) {
             sb.append('T').append(name).append(';');
         }
     }

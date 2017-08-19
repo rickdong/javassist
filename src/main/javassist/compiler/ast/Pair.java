@@ -33,7 +33,7 @@ public class Pair extends ASTree {
     public void accept(Visitor v) throws CompileError { v.atPair(this); }
 
     public String toString() {
-        StringBuffer sbuf = new StringBuffer();
+        StringBuilder sbuf = new StringBuilder();
         sbuf.append("(<Pair> ");
         sbuf.append(left == null ? "<null>" : left.toString());
         sbuf.append(" . ");

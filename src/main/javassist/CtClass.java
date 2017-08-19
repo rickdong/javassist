@@ -29,6 +29,7 @@ import java.util.Collection;
 
 import javassist.bytecode.ClassFile;
 import javassist.bytecode.Descriptor;
+import javassist.bytecode.MethodInfo;
 import javassist.bytecode.Opcode;
 import javassist.expr.ExprEditor;
 import javassist.util.JvmNamesCache;
@@ -200,7 +201,7 @@ public abstract class CtClass {
      * Converts the object to a string.
      */
     public String toString() {
-        StringBuffer buf = new StringBuffer(getClass().getName());
+        StringBuilder buf = new StringBuilder(getClass().getName());
         buf.append("@");
         buf.append(Integer.toHexString(hashCode()));
         buf.append("[");
@@ -213,7 +214,7 @@ public abstract class CtClass {
      * Implemented in subclasses to add to the {@link #toString()} result.
      * Subclasses should put a space before each token added to the buffer.
      */
-    protected void extendToString(StringBuffer buffer) {
+    protected void extendToString(StringBuilder buffer) {
         buffer.append(getName());
     }
 
@@ -890,6 +891,10 @@ public abstract class CtClass {
         throw new NotFoundException(name);
     }
 
+    public CtBehavior where(MethodInfo mi) {
+        return null;
+    }
+    
     /**
      * Gets all the constructors and methods declared in the class.
      */
@@ -1034,6 +1039,14 @@ public abstract class CtClass {
      */
     public CtMethod getDeclaredMethod(String name) throws NotFoundException {
         throw new NotFoundException(name);
+    }
+    
+    public CtMethod getDeclaredMethod(String name, String desc) throws NotFoundException {
+        throw new NotFoundException(name);
+    }
+    
+    public CtMethod getDeclaredMethodByNameAndDesc(String nameAndDesc) throws NotFoundException {
+        throw new NotFoundException(nameAndDesc);
     }
 
     /**

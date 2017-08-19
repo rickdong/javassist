@@ -482,7 +482,7 @@ public class MemberResolver implements TokenId {
                 if (notCheckInner || i < 0)
                     throw e;
                 else {
-                    StringBuffer sbuf = new StringBuffer(classname);
+                    StringBuilder sbuf = new StringBuilder(classname);
                     sbuf.setCharAt(i, '$');
                     classname = sbuf.toString();
                 }

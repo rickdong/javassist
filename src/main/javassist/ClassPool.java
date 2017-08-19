@@ -446,12 +446,10 @@ public class ClassPool {
      * @param classname         a fully-qualified class name.
      */
     public CtClass get(String classname) throws NotFoundException {
-        CtClass clazz;
-        if (classname == null)
-            clazz = null;
-        else
+        CtClass clazz = null;
+        if (classname != null) {
             clazz = get0(classname, true);
-
+        }
         if (clazz == null)
             throw new NotFoundException(classname);
         else {
@@ -540,7 +538,8 @@ public class ClassPool {
                 return clazz;
         }
         
-        synchronized (this) {
+        String cname = classname.intern();
+        synchronized (cname) {
             clazz = createCtClass(classname, useCache);
             if (clazz != null) {
                 // clazz.getName() != classname if classname is "[L<name>;".

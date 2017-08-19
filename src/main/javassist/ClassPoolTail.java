@@ -187,7 +187,7 @@ final class ClassPoolTail {
     }
 
     public String toString() {
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         buf.append("[class path: ");
         ClassPathList list = pathList;
         while (list != null) {

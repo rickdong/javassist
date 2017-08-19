@@ -213,7 +213,7 @@ public class Annotation {
      * Returns a string representation of the annotation.
      */
     public String toString() {
-        StringBuffer buf = new StringBuffer("@");
+        StringBuilder buf = new StringBuilder("@");
         buf.append(getTypeName());
         if (members != null) {
             buf.append("(");

@@ -378,7 +378,7 @@ public class StackMapTest extends TestCase {
         // CodeConverter conv = new CodeConverter();
         // conv.replaceNew(cc, cc, "make2");
         // cc.instrument(conv);
-        StringBuffer sbuf = new StringBuffer("String s;");
+        StringBuilder sbuf = new StringBuilder("String s;");
         for (int i = 0; i < 130; i++)
             sbuf.append("s =\"" + i + "\";");
 
@@ -418,7 +418,7 @@ public class StackMapTest extends TestCase {
 
     public void testSwitchCase2() throws Exception {
         CtClass cc = loader.get("javassist.bytecode.StackMapTest$T7b");
-        StringBuffer sbuf = new StringBuffer("String s;");
+        StringBuilder sbuf = new StringBuilder("String s;");
         for (int i = 0; i < 130; i++)
             sbuf.append("s =\"" + i + "\";");
 
@@ -458,7 +458,7 @@ public class StackMapTest extends TestCase {
 
     public void testSwitchCase3() throws Exception {
         CtClass cc = loader.get("javassist.bytecode.StackMapTest$T7c");
-        StringBuffer sbuf = new StringBuffer("String s;");
+        StringBuilder sbuf = new StringBuilder("String s;");
         for (int i = 0; i < 130; i++)
             sbuf.append("s =\"" + i + "\";");
 
@@ -507,7 +507,7 @@ public class StackMapTest extends TestCase {
 
     public void testSwitchCase4() throws Exception {
         CtClass cc = loader.get("javassist.bytecode.StackMapTest$T8e");
-        StringBuffer sbuf = new StringBuffer("String s;");
+        StringBuilder sbuf = new StringBuilder("String s;");
         for (int i = 0; i < 130; i++)
             sbuf.append("s =\"" + i + "\";");
 

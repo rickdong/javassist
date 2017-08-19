@@ -18,6 +18,7 @@ package javassist;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,7 @@ public abstract class CtMember {
      * at the same time.
      */
     static class Cache extends CtMember implements AttributeChangeListener {
-        protected void extendToString(StringBuffer buffer) {}
+        protected void extendToString(StringBuilder buffer) {}
         public boolean hasAnnotation(String clz) { return false; }
         public Object getAnnotation(Class clz)
             throws ClassNotFoundException { return null; }
@@ -58,9 +59,11 @@ public abstract class CtMember {
         public void setGenericSignature(String sig) {}
 
         private final List<CtConstructor> cons = new ArrayList<CtConstructor>();
+        private final List<CtConstructor> staticInits = new ArrayList<CtConstructor>();
         private final Map<String, List<CtMethod>> methods = new HashMap<String, List<CtMethod>>();
         private final List<CtMethod> methods2 = new ArrayList<CtMethod>();
         private final Map<String, CtField> fields = new HashMap<String, CtField>();
+        private final Map<MethodInfo, CtBehavior> methodInfoToBehavior = new IdentityHashMap<MethodInfo, CtBehavior>(1000);
 
         Cache(CtClassType decl) {
             super(decl);
@@ -82,7 +85,20 @@ public abstract class CtMember {
                             if (mth.getMethodInfo2().equals(src)) {
                                 it.remove();
                                 CollectionUtils.addToKeyedList(newValue + " " + mi.getDescriptor(), mth, methods);
+                                break;
                             }
+                        }
+                    }
+                    if (MethodInfo.nameClinit.equals(oldValue)) {
+                        CtBehavior cb = methodInfoToBehavior.get(mi);
+                        if (cb instanceof CtConstructor) {
+                            staticInits.remove(cb);
+                        }
+                    }
+                    else if (MethodInfo.nameClinit.equals(newValue)) {
+                        CtBehavior cb = methodInfoToBehavior.get(mi);
+                        if (cb instanceof CtConstructor) {
+                            staticInits.add((CtConstructor) cb);
                         }
                     }
                 }
@@ -97,6 +113,7 @@ public abstract class CtMember {
                             if (mth.getMethodInfo2().equals(src)) {
                                 it.remove();
                                 CollectionUtils.addToKeyedList(mi.getName() + " " + newValue, mth, methods);
+                                break;
                             }
                         }
                     }
@@ -108,6 +125,7 @@ public abstract class CtMember {
         void addMethod(CtMethod method) {
             method.getMethodInfo2().addChangeListener(this);
             CollectionUtils.addToKeyedList(method.getName() + " " + method.getSignature(), method, methods);
+            methodInfoToBehavior.put(method.getMethodInfo2(), method);
             methods2.add(method);
         }
 
@@ -116,7 +134,11 @@ public abstract class CtMember {
         }
         
         CtMethod getMethod(String name, String desc) {
-            List<CtMethod> mths = methods.get(name + " " + desc);
+            return getMethodByNameAndDesc(name + " " + desc);
+        }
+
+        CtMethod getMethodByNameAndDesc(String nameAndDesc) {
+            List<CtMethod> mths = methods.get(nameAndDesc);
             return mths == null || mths.isEmpty() ? null : mths.get(0);
         }
         
@@ -124,6 +146,10 @@ public abstract class CtMember {
          */
         void addConstructor(CtConstructor cons) {
             this.cons.add(cons);
+            methodInfoToBehavior.put(cons.getMethodInfo2(), cons);
+            if (cons.isClassInitializer()) {
+                staticInits.add(cons);
+            }
         }
         
         CtConstructor[] getConstructors(){
@@ -160,12 +186,10 @@ public abstract class CtMember {
         }
         
         CtConstructor getClassInitializer() {
-            for (CtConstructor c : cons) {
-                if (c.isClassInitializer()) {
-                    return c;
-                }
+            if (staticInits.isEmpty()) {
+                return null;
             }
-            return null;
+            return staticInits.get(0);
         }
 
         private static boolean isPubCons(CtConstructor cons) {
@@ -207,10 +231,12 @@ public abstract class CtMember {
                     List<CtMethod> val  = it.next().getValue();
                     if(val.remove(mth)) {
                         mth.getMethodInfo2().removeChangeListener(this);
+                        methodInfoToBehavior.remove(mth.getMethodInfo2());
                         methods2.remove(mth);
-                    }
-                    if(val.isEmpty()){
-                        it.remove();
+                        if(val.isEmpty()){
+                            it.remove();
+                        }
+                        break;
                     }
                 }
             }
@@ -221,11 +247,31 @@ public abstract class CtMember {
                 }
             }
             else if(mem instanceof CtConstructor){
-                cons.remove(mem);
+                CtConstructor con = (CtConstructor) mem;
+                methodInfoToBehavior.remove(con.getMethodInfo2());
+                cons.remove(con);
             }
         }
+        
+        CtBehavior where(MethodInfo mi) {
+            CtBehavior b = methodInfoToBehavior.get(mi);
+            if (b != null) {
+                return b;
+            }
+            /*
+             * getDeclaredBehaviors() returns a list of methods/constructors. Although the list is
+             * cached in a CtClass object, it might be recreated for some reason. Thus, the member
+             * name and the signature must be also checked.
+             */
+            for (MethodInfo i : methodInfoToBehavior.keySet()) {
+                if (mi.getName().equals(i.getName()) && mi.getDescriptor().equals(i.getDescriptor())) {
+                    return methodInfoToBehavior.get(i);
+                }
+            }
+            return null;
+        }
     }
-
+    
     protected CtMember(CtClass clazz) {
         declaringClass = clazz;
     }
@@ -239,7 +285,7 @@ public abstract class CtMember {
     void nameReplaced() {}
 
     public String toString() {
-        StringBuffer buffer = new StringBuffer(getClass().getName());
+        StringBuilder buffer = new StringBuilder(getClass().getName());
         buffer.append("@");
         buffer.append(Integer.toHexString(hashCode()));
         buffer.append("[");
@@ -256,7 +302,7 @@ public abstract class CtMember {
      * provided first; subclasses should provide additional data such
      * as return type, field or method name, etc.
      */
-    protected abstract void extendToString(StringBuffer buffer);
+    protected abstract void extendToString(StringBuilder buffer);
 
     /**
      * Returns the class that declares this member.

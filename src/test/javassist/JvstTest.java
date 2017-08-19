@@ -779,7 +779,7 @@ public class JvstTest extends JvstTestRoot {
     public void testCast() throws Exception {
         CtClass cc = sloader.makeClass("test1.CastTest");
 
-        StringBuffer src = new StringBuffer();
+        StringBuilder src = new StringBuilder();
         src.append("public void test(java.lang.String[] strValues)\n");
         src.append("{\n");
         src.append("\tObject[] values = new Object[2];");

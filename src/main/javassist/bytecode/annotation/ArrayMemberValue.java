@@ -113,7 +113,7 @@ public class ArrayMemberValue extends MemberValue {
      * Obtains the string representation of this object.
      */
     public String toString() {
-        StringBuffer buf = new StringBuffer("{");
+        StringBuilder buf = new StringBuilder("{");
         if (values != null) {
             for (int i = 0; i < values.length; i++) {
                 buf.append(values[i].toString());

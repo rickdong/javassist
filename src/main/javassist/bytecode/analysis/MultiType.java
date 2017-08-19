@@ -299,7 +299,7 @@ public class MultiType extends Type {
         if (resolved != null)
             return resolved.toString();
 
-        StringBuffer buffer = new StringBuffer("{");
+        StringBuilder buffer = new StringBuilder("{");
         Iterator iter = interfaces.keySet().iterator();
         while (iter.hasNext()) {
             buffer.append(iter.next());

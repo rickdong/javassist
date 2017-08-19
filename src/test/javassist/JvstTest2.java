@@ -676,7 +676,7 @@ public class JvstTest2 extends JvstTestRoot {
     public void testNewExprTry() throws Exception {
         ExprEditor ed = new ExprEditor() {
             public void edit(NewExpr expr) throws CannotCompileException {
-                StringBuffer code = new StringBuffer(300); 
+                StringBuilder code = new StringBuilder(300); 
                 code.append("{ try ");
                 code.append("{ $_ = $proceed($$); }");
                 code.append("catch (OutOfMemoryError e) {}}"); 

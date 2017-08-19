@@ -67,7 +67,7 @@ public class BasicBlock {
     }
 
     public String toString() {
-        StringBuffer sbuf = new StringBuffer();
+        StringBuilder sbuf = new StringBuilder();
         String cname = this.getClass().getName();
         int i = cname.lastIndexOf('.');
         sbuf.append(i < 0 ? cname : cname.substring(i + 1));
@@ -77,7 +77,7 @@ public class BasicBlock {
         return sbuf.toString();
     }
 
-    protected void toString2(StringBuffer sbuf) {
+    protected void toString2(StringBuilder sbuf) {
         sbuf.append("pos=").append(position).append(", len=")
             .append(length).append(", in=").append(incoming)
             .append(", exit{");

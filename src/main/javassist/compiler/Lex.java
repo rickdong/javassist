@@ -27,7 +27,7 @@ class Token {
 
 public class Lex implements TokenId {
     private int lastChar;
-    private StringBuffer textBuffer;
+    private StringBuilder textBuffer;
     private Token currentToken;
     private Token lookAheadTokens;
 
@@ -39,7 +39,7 @@ public class Lex implements TokenId {
      */
     public Lex(String s) {
         lastChar = -1;
-        textBuffer = new StringBuffer();
+        textBuffer = new StringBuilder();
         currentToken = new Token();
         lookAheadTokens = null;
 
@@ -124,7 +124,7 @@ public class Lex implements TokenId {
         else if(c == '.'){
             c = getc();
             if ('0' <= c && c <= '9') {
-                StringBuffer tbuf = textBuffer;
+                StringBuilder tbuf = textBuffer;
                 tbuf.setLength(0);
                 tbuf.append('.');
                 return readDouble(tbuf, c, token);
@@ -209,7 +209,7 @@ public class Lex implements TokenId {
 
     private int readStringL(Token token) {
         int c;
-        StringBuffer tbuf = textBuffer;
+        StringBuilder tbuf = textBuffer;
         tbuf.setLength(0);
         for (;;) {
             while ((c = getc()) != '"') {
@@ -295,7 +295,7 @@ public class Lex implements TokenId {
         }
         else if (c2 == 'E' || c2 == 'e'
                  || c2 == 'D' || c2 == 'd' || c2 == '.') {
-            StringBuffer tbuf = textBuffer;
+            StringBuilder tbuf = textBuffer;
             tbuf.setLength(0);
             tbuf.append(value);
             return readDouble(tbuf, c2, token);
@@ -308,7 +308,7 @@ public class Lex implements TokenId {
         }
     }
 
-    private int readDouble(StringBuffer sbuf, int c, Token token) {
+    private int readDouble(StringBuilder sbuf, int c, Token token) {
         if (c != 'E' && c != 'e' && c != 'D' && c != 'd') {
             sbuf.append((char)c);
             for (;;) {
@@ -428,7 +428,7 @@ public class Lex implements TokenId {
     }
 
     private int readIdentifier(int c, Token token) {
-        StringBuffer tbuf = textBuffer;
+        StringBuilder tbuf = textBuffer;
         tbuf.setLength(0);
 
         do {
@@ -445,7 +445,7 @@ public class Lex implements TokenId {
         else {
             /* tbuf.toString() is executed quickly since it does not
              * need memory copy.  Using a hand-written extensible
-             * byte-array class instead of StringBuffer is not a good idea
+             * byte-array class instead of StringBuilder is not a good idea
              * for execution speed.  Converting a byte array to a String
              * object is very slow.  Using an extensible char array
              * might be OK.

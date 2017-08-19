@@ -21,10 +21,13 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javassist.CannotCompileException;
 import javassist.util.CollectionUtils;
@@ -72,6 +75,7 @@ public final class ClassFile implements AttributeChangeListener {
     Map<String, AttributeInfo> attributes;
     String thisclassname; // not JVM-internal name
     String[] cachedInterfaces;
+    Set<String> cacheInterfaces2 = new HashSet<String>();
     String cachedSuperclass;
 
     /**
@@ -593,8 +597,10 @@ public final class ClassFile implements AttributeChangeListener {
         else {
             int n = interfaces.length;
             String[] list = new String[n];
-            for (int i = 0; i < n; ++i)
+            for (int i = 0; i < n; ++i) {
                 list[i] = constPool.getClassInfo(interfaces[i]);
+                cacheInterfaces2.add(list[i]);
+            }
 
             rtn = list;
         }
@@ -602,6 +608,14 @@ public final class ClassFile implements AttributeChangeListener {
         cachedInterfaces = rtn;
         return rtn;
     }
+    
+    public boolean containsInterface(String name) {
+        if (cacheInterfaces2 == null) {
+            getInterfaces();
+        }
+        return cacheInterfaces2.contains(name);
+    }
+    
 
     /**
      * Sets the interfaces.
@@ -611,6 +625,7 @@ public final class ClassFile implements AttributeChangeListener {
      */
     public void setInterfaces(String[] nameList) {
         cachedInterfaces = null;
+        cacheInterfaces2.clear();
         if (nameList != null) {
             int n = nameList.length;
             interfaces = new int[n];
@@ -624,6 +639,7 @@ public final class ClassFile implements AttributeChangeListener {
      */
     public void addInterface(String name) {
         cachedInterfaces = null;
+        cacheInterfaces2.clear();
         int info = constPool.addClassInfo(name);
         if (interfaces == null) {
             interfaces = new int[1];

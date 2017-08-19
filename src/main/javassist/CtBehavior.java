@@ -81,7 +81,7 @@ public abstract class CtBehavior extends CtMember {
         }
     }
 
-    protected void extendToString(StringBuffer buffer) {
+    protected void extendToString(StringBuilder buffer) {
         buffer.append(' ');
         buffer.append(getName());
         buffer.append(' ');

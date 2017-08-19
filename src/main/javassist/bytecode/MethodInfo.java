@@ -59,7 +59,7 @@ public class MethodInfo extends AttributeObservable{
     int name;
     String cachedName;
     int descriptor;
-    Map attribute; // may be null
+    Map<String, AttributeInfo> attribute; // may be null
 
     /**
      * If this value is true, Javassist maintains a <code>StackMap</code> attribute
@@ -347,6 +347,11 @@ public class MethodInfo extends AttributeObservable{
         attribute.put(info.getName(), info);
     }
 
+    @SuppressWarnings("unchecked")
+    public <T extends AttributeInfo> T removeAttribute(String name) {
+        return (T) attribute.remove(name);
+    }
+    
     /**
      * Returns an Exceptions attribute.
      * 
