@@ -222,6 +222,9 @@ public final class ConstPool {
     /**
      * Returns the <code>tag</code> field of the constant pool table
      * entry at the given index.
+     *
+     * @return either <code>CONST_Class</code>, <code>CONST_Fieldref</code>,
+     *         <code>CONST_Methodref</code>, or ...  
      */
     public int getTag(int index) {
         return getItem(index).getTag();
@@ -564,13 +567,13 @@ public final class ConstPool {
         if (constInfo instanceof StringInfo)
             value = this.getStringInfo(index);
         else if (constInfo instanceof FloatInfo)
-            value = new Float(getFloatInfo(index));
+            value = Float.valueOf(getFloatInfo(index));
         else if (constInfo instanceof IntegerInfo)
-            value = new Integer(getIntegerInfo(index));
+            value = Integer.valueOf(getIntegerInfo(index));
         else if (constInfo instanceof LongInfo)
-            value = new Long(getLongInfo(index));
+            value = Long.valueOf(getLongInfo(index));
         else if (constInfo instanceof DoubleInfo)
-            value = new Double(getDoubleInfo(index));
+            value = Double.valueOf(getDoubleInfo(index));
         else
             value = null;
 

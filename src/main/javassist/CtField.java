@@ -374,6 +374,17 @@ public class CtField extends CtMember {
 
     /**
      * Sets the type of the field.
+     *
+     * <p>This method does not automatically update method bodies that access
+     * this field.  They have to be explicitly updated.  For example,
+     * if some method contains an expression {@code t.value} and the type
+     * of the variable {@code t} is changed by {@link #setType(CtClass)}
+     * from {@code int} to {@code double}, then {@code t.value} has to be modified
+     * as well since the bytecode of {@code t.value} contains the type information.
+     * </p>
+     *
+     * @see CodeConverter
+     * @see javassist.expr.ExprEditor
      */
     public void setType(CtClass clazz) {
         declaringClass.checkModify();
@@ -405,18 +416,18 @@ public class CtField extends CtMember {
         ConstPool cp = fieldInfo.getConstPool();
         switch (cp.getTag(index)) {
             case ConstPool.CONST_Long :
-                return new Long(cp.getLongInfo(index));
+                return Long.valueOf(cp.getLongInfo(index));
             case ConstPool.CONST_Float :
-                return new Float(cp.getFloatInfo(index));
+                return Float.valueOf(cp.getFloatInfo(index));
             case ConstPool.CONST_Double :
-                return new Double(cp.getDoubleInfo(index));
+                return Double.valueOf(cp.getDoubleInfo(index));
             case ConstPool.CONST_Integer :
                 int value = cp.getIntegerInfo(index);
                 // "Z" means boolean type.
                 if ("Z".equals(fieldInfo.getDescriptor()))
-                    return new Boolean(value != 0);
+                    return Boolean.valueOf(value != 0);
                 else
-                    return new Integer(value);
+                    return Integer.valueOf(value);
             case ConstPool.CONST_String :
                 return cp.getStringInfo(index);
             default :

@@ -8,8 +8,12 @@ import javassist.expr.*;
 import javassist.runtime.*;
 
 public class JvstTest extends JvstTestRoot {
+    public static boolean java9;
+
     static {
         //javassist.bytecode.MethodInfo.doPreverify = true;
+        java9 = javassist.bytecode.ClassFile.MAJOR_VERSION
+                    >= javassist.bytecode.ClassFile.JAVA_9;
     }
     public JvstTest(String name) {
          super(name);
@@ -842,7 +846,7 @@ public class JvstTest extends JvstTestRoot {
         // cloader.loadClass(cc.getName());
         java.io.File genDir = new java.io.File(".");
         java.net.URLClassLoader ucl = new java.net.URLClassLoader(
-                        new java.net.URL[] { genDir.toURL() }, null);
+                        new java.net.URL[] { genDir.toURI().toURL() }, null);
         Class intf = ucl.loadClass("test1.MkInterface");
     }
 
@@ -1041,7 +1045,7 @@ public class JvstTest extends JvstTestRoot {
     }
 
     public void testPackage() throws Exception {
-        Object obj = new Loader().loadClass("test1.Pac").newInstance();
+        Object obj = new Loader().loadClass("test1.Pac").getConstructor().newInstance();
         assertEquals(1, invoke(obj, "run"));
     }
 
@@ -1120,6 +1124,7 @@ public class JvstTest extends JvstTestRoot {
         suite.addTestSuite(testproxy.ProxyFactoryPerformanceTest.class); // remove?
         suite.addTestSuite(javassist.proxyfactory.ProxyFactoryTest.class);
         suite.addTestSuite(javassist.proxyfactory.Tester.class);
+        suite.addTestSuite(javassist.HotswapTest.class);
         suite.addTestSuite(test.javassist.proxy.ProxySerializationTest.class);
         suite.addTestSuite(test.javassist.convert.ArrayAccessReplaceTest.class);
         suite.addTestSuite(test.javassist.proxy.JASSIST113RegressionTest.class);

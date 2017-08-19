@@ -170,18 +170,24 @@ class CtClassType extends CtClass {
     }
 
     public ClassFile getClassFile2() {
+        return getClassFile3(true);
+    }
+
+    public ClassFile getClassFile3(boolean doCompress) {
         ClassFile cfile = classfile;
         if (cfile != null)
             return cfile;
 
-        classPool.compress();
+        if (doCompress)
+            classPool.compress();
+
         if (rawClassfile != null) {
             try {
-                classfile = new ClassFile(new DataInputStream(
-                                            new ByteArrayInputStream(rawClassfile)));
+                ClassFile cf = new ClassFile(new DataInputStream(
+                                             new ByteArrayInputStream(rawClassfile)));
                 rawClassfile = null;
                 getCount = GET_THRESHOLD;
-                return classfile;
+                return setClassFile(cf);
             }
             catch (IOException e) {
                 throw new RuntimeException(e.toString(), e);
@@ -201,8 +207,7 @@ class CtClassType extends CtClass {
                         + cf.getName() + " found in "
                         + qualifiedName.replace('.', '/') + ".class");
 
-            classfile = cf;
-            return cf;
+            return setClassFile(cf);
         }
         catch (NotFoundException e) {
             throw new RuntimeException(e.toString(), e);
@@ -246,7 +251,7 @@ class CtClassType extends CtClass {
      * for saving memory space.
      */
     private synchronized void saveClassFile() {
-        /* getMembers() and releaseClassFile() are also synchronized.
+        /* getMembers() and removeClassFile() are also synchronized.
          */
         if (classfile == null || hasMemberCache() != null)
             return;
@@ -265,6 +270,16 @@ class CtClassType extends CtClass {
     private synchronized void removeClassFile() {
         if (classfile != null && !isModified() && hasMemberCache() == null)
             classfile = null;
+    }
+
+    /**
+     * Updates {@code classfile} if it is null.
+     */
+    private synchronized ClassFile setClassFile(ClassFile cf) {
+        if (classfile == null)
+            classfile = cf;
+
+        return classfile;
     }
 
     public ClassPool getClassPool() { return classPool; }
@@ -438,17 +453,46 @@ class CtClassType extends CtClass {
     }
 
     public void setModifiers(int mod) {
+        checkModify();
+        updateInnerEntry(mod, getName(), this, true);
         ClassFile cf = getClassFile2();
-        if (Modifier.isStatic(mod)) {
-            int flags = cf.getInnerAccessFlags();
-            if (flags != -1 && (flags & AccessFlag.STATIC) != 0)
-                mod = mod & ~Modifier.STATIC;
-            else
-                throw new RuntimeException("cannot change " + getName() + " into a static class");
+        cf.setAccessFlags(AccessFlag.of(mod & ~Modifier.STATIC));
+    }
+
+    private static void updateInnerEntry(int newMod, String name, CtClass clazz, boolean outer) {
+        ClassFile cf = clazz.getClassFile2();
+        InnerClassesAttribute ica
+            = (InnerClassesAttribute)cf.getAttribute(InnerClassesAttribute.tag);
+        if (ica != null) {
+            // If the class is a static inner class, its modifier
+            // does not contain the static bit.  Its inner class attribute
+            // contains the static bit.
+            int mod = newMod & ~Modifier.STATIC;
+            int i = ica.find(name);
+            if (i >= 0) {
+                int isStatic = ica.accessFlags(i) & AccessFlag.STATIC;
+                if (isStatic != 0 || !Modifier.isStatic(newMod)) {
+                    clazz.checkModify();
+                    ica.setAccessFlags(i, AccessFlag.of(mod) | isStatic);
+                    String outName = ica.outerClass(i);
+                    if (outName != null && outer)
+                        try {
+                            CtClass parent = clazz.getClassPool().get(outName);
+                            updateInnerEntry(mod, name, parent, false);
+                        }
+                        catch (NotFoundException e) {
+                            throw new RuntimeException("cannot find the declaring class: "
+                                                       + outName);
+                        }
+
+                    return;
+                }
+            }
         }
 
-        checkModify();
-        cf.setAccessFlags(AccessFlag.of(mod));
+        if (Modifier.isStatic(newMod))
+            throw new RuntimeException("cannot change " + Descriptor.toJavaName(name)
+                                       + " into a static class");
     }
 
     //@Override
@@ -861,8 +905,9 @@ class CtClassType extends CtClass {
      * Returns null if members are not cached.
      */
     protected CtMember.Cache hasMemberCache() {
-        if (memberCache != null)
-            return (CtMember.Cache)memberCache.get();
+        WeakReference cache = memberCache;
+        if (cache != null)
+            return (CtMember.Cache)cache.get();
         else
             return null;
     }
@@ -881,7 +926,7 @@ class CtClassType extends CtClass {
     }
 
     private void makeFieldCache(CtMember.Cache cache) {
-        List list = getClassFile2().getFields();
+        List list = getClassFile3(false).getFields();
         int n = list.size();
         for (int i = 0; i < n; ++i) {
             FieldInfo finfo = (FieldInfo)list.get(i);
@@ -891,7 +936,7 @@ class CtClassType extends CtClass {
     }
 
     private void makeBehaviorCache(CtMember.Cache cache) {
-        List list = getClassFile2().getMethods();
+        List list = getClassFile3(false).getMethods();
         int n = list.size();
         for (int i = 0; i < n; ++i) {
             MethodInfo minfo = (MethodInfo)list.get(i);
@@ -1384,10 +1429,11 @@ class CtClassType extends CtClass {
 
         int mod = m.getModifiers();
         if ((getModifiers() & Modifier.INTERFACE) != 0) {
-            m.setModifiers(mod | Modifier.PUBLIC);
-            if ((mod & Modifier.ABSTRACT) == 0)
+            if (Modifier.isProtected(mod) || Modifier.isPrivate(mod))
                 throw new CannotCompileException(
-                        "an interface method must be abstract: " + m.toString());
+                        "an interface method must be public: " + m.toString());
+
+            m.setModifiers(mod | Modifier.PUBLIC);
         }
 
         getMembers().addMethod(m);
