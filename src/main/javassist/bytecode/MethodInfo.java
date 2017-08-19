@@ -326,6 +326,11 @@ public class MethodInfo extends AttributeObservable{
      * Returns the attribute with the specified name. If it is not found, this
      * method returns null.
      * 
+     * <p>An attribute name can be obtained by, for example,
+     * {@link AnnotationsAttribute#visibleTag} or
+     * {@link AnnotationsAttribute#invisibleTag}.
+     * </p>
+     * 
      * @param name attribute name
      * @return an <code>AttributeInfo</code> object or null.
      * @see #getAttributes()

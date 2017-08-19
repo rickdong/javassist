@@ -127,6 +127,12 @@ public final class ClassFile implements AttributeChangeListener {
     public static final int JAVA_8 = 52;
 
     /**
+     * The major version number of class files
+     * for JDK 1.9.
+     */
+    public static final int JAVA_9 = 53;
+
+    /**
      * The major version number of class files created
      * from scratch.  The default value is 47 (JDK 1.3).
      * It is 49 (JDK 1.5)
@@ -135,19 +141,29 @@ public final class ClassFile implements AttributeChangeListener {
      * if the JVM supports <code>java.util.zip.DeflaterInputStream</code>.
      * It is 51 (JDK 1.7)
      * if the JVM supports <code>java.lang.invoke.CallSite</code>.
+     * It is 52 (JDK 1.8)
+     * if the JVM supports <code>java.util.function.Function</code>.
+     * It is 53 (JDK 1.9)
+     * if the JVM supports <code>java.lang.reflect.Module</code>.
      */
-    public static int MAJOR_VERSION = JAVA_3;
+    public static final int MAJOR_VERSION;
 
     static {
+        int ver = JAVA_3;
         try {
             Class.forName("java.lang.StringBuilder");
-            MAJOR_VERSION = JAVA_5;
+            ver = JAVA_5;
             Class.forName("java.util.zip.DeflaterInputStream");
-            MAJOR_VERSION = JAVA_6;
-            Class.forName("java.lang.invoke.CallSite");
-            MAJOR_VERSION = JAVA_7;
+            ver = JAVA_6;
+            Class.forName("java.lang.invoke.CallSite", false, ClassLoader.getSystemClassLoader());
+            ver = JAVA_7;
+            Class.forName("java.util.function.Function");
+            ver = JAVA_8;
+            Class.forName("java.lang.Module");
+            ver = JAVA_9;
         }
         catch (Throwable t) {}
+        MAJOR_VERSION = ver;
     }
 
     /**
@@ -874,6 +890,11 @@ public final class ClassFile implements AttributeChangeListener {
      * Returns the attribute with the specified name.  If there are multiple
      * attributes with that name, this method returns either of them.   It
      * returns null if the specified attributed is not found.
+     *
+     * <p>An attribute name can be obtained by, for example,
+     * {@link AnnotationsAttribute#visibleTag} or
+     * {@link AnnotationsAttribute#invisibleTag}. 
+     * </p>
      * 
      * @param name          attribute name
      * @see #getAttributes()
@@ -881,6 +902,17 @@ public final class ClassFile implements AttributeChangeListener {
     public AttributeInfo getAttribute(String name) {
         Map<String, AttributeInfo> list = attributes;
         return list.get(name);
+    }
+
+    /**
+     * Removes an attribute with the specified name.
+     *
+     * @param name      attribute name.
+     * @return          the removed attribute or null.
+     * @since 3.21
+     */
+    public AttributeInfo removeAttribute(String name) {
+        return AttributeInfo.remove(attributes, name);
     }
 
     /**

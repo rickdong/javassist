@@ -17,13 +17,13 @@
 package javassist;
 
 import java.io.*;
-import java.util.jar.*;
 
 import javassist.util.JvmNamesCache;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Hashtable;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 final class ClassPathList {
     ClassPathList next;
@@ -237,7 +237,8 @@ final class ClassPoolTail {
     }
 
     public ClassPath appendSystemPath() {
-        return appendClassPath(new ClassClassPath());
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        return appendClassPath(new LoaderClassPath(cl));
     }
 
     public ClassPath insertClassPath(String pathname)

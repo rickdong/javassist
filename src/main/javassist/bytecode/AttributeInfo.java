@@ -31,6 +31,10 @@ import java.util.LinkedHashMap;
 
 /**
  * <code>attribute_info</code> structure.
+ *
+ * @see ClassFile#getAttribute(String)
+ * @see MethodInfo#getAttribute(String)
+ * @see FieldInfo#getAttribute(String)
  */
 public class AttributeInfo {
     protected ConstPool constPool;
@@ -220,11 +224,11 @@ public class AttributeInfo {
         return (AttributeInfo) list.get(name);
     }
 
-    static synchronized void remove(Map list, String name) {
+    static synchronized AttributeInfo remove(Map list, String name) {
         if (list == null)
-            return;
+            return null;
 
-        list.remove(name);
+        return (AttributeInfo) list.remove(name);
     }
 
     static void writeAll(Map list, DataOutputStream out)

@@ -40,6 +40,10 @@ import javassist.util.JvmNamesCache;
  * <code>ClassClassPath</code> uses a class object representing
  * the class including the code snippet above.
  *
+ * <p>Class files in a named module are private to that module.
+ * This method cannot obtain class files in named modules.
+ * </p>
+ * 
  * @see ClassPool#insertClassPath(ClassPath)
  * @see ClassPool#appendClassPath(ClassPath)
  * @see LoaderClassPath
@@ -72,7 +76,7 @@ public class ClassClassPath implements ClassPath {
     /**
      * Obtains a class file by <code>getResourceAsStream()</code>.
      */
-    public InputStream openClassfile(String classname) {
+    public InputStream openClassfile(String classname) throws NotFoundException {
         String jarname = "/" + JvmNamesCache.javaToJvmName(classname) + ".class";
         return thisClass.getResourceAsStream(jarname);
     }

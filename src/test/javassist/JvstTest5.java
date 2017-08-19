@@ -3,8 +3,14 @@ package javassist;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.TypeVariable;
 
+import javassist.bytecode.AccessFlag;
+import javassist.bytecode.AnnotationsAttribute;
+import javassist.bytecode.AttributeInfo;
 import javassist.bytecode.ClassFile;
+import javassist.bytecode.ConstPool;
 import javassist.bytecode.InnerClassesAttribute;
+import javassist.expr.ExprEditor;
+import javassist.expr.MethodCall;
 
 public class JvstTest5 extends JvstTestRoot {
     public JvstTest5(String name) {
@@ -72,7 +78,7 @@ public class JvstTest5 extends JvstTestRoot {
     }
 
     public void testJIRA242() throws Exception {
-        Boolean ss = new Boolean(2 > 3);
+        Boolean ss = Boolean.valueOf(2 > 3);
         ClassPool cp = ClassPool.getDefault();
         CtClass cc = cp.get("test5.JIRA242$Hello");
         CtMethod m = cc.getDeclaredMethod("say");
@@ -124,5 +130,220 @@ public class JvstTest5 extends JvstTestRoot {
         cc.writeFile();
         Object obj = make(cc.getName());
         assertEquals(1, invoke(obj, "run"));
+    }
+
+    public void testJIRA248() throws Exception {
+        CtClass cc = sloader.get("test5.JIRA248");
+        String methodBody = "public int run() { return foo() + super.foo() + super.bar() + test5.JIRA248Intf2.super.baz(); }";
+        CtMethod ctMethod = CtMethod.make(methodBody, cc);
+        cc.addMethod(ctMethod);
+        cc.writeFile();
+        Object obj = make(cc.getName());
+        assertEquals(40271, invoke(obj, "run"));
+    }
+
+    public void testInvalidCastWithDollar() throws Exception {
+        String code = "{ new test5.JavassistInvalidCastTest().inspectReturn((Object) ($w) $_); } ";
+        CtClass c = sloader.get("test5.InvalidCastDollar");
+        for (CtMethod method : c.getDeclaredMethods())
+            method.insertAfter(code);
+    }
+
+    public void testJIRA256() throws Exception {
+        // CtClass ec = sloader.get("test5.Entity");
+
+        CtClass cc = sloader.makeClass("test5.JIRA256");
+        ClassFile ccFile = cc.getClassFile();
+        ConstPool constpool = ccFile.getConstPool();
+         
+        AnnotationsAttribute attr = new AnnotationsAttribute(constpool, AnnotationsAttribute.visibleTag);
+        javassist.bytecode.annotation.Annotation entityAnno
+            = new javassist.bytecode.annotation.Annotation("test5.Entity", constpool);
+            // = new javassist.bytecode.annotation.Annotation(constpool, ec);
+
+        entityAnno.addMemberValue("value", new javassist.bytecode.annotation.ArrayMemberValue(constpool));
+        attr.addAnnotation(entityAnno);
+        ccFile.addAttribute(attr);
+
+        cc.writeFile();
+        Object o = make(cc.getName());
+        assertTrue(o.getClass().getName().equals("test5.JIRA256"));
+
+        java.lang.annotation.Annotation[] annotations = o.getClass().getDeclaredAnnotations();
+        assertEquals(1, annotations.length); 
+    }
+
+    public void testJIRA250() throws Exception {
+        CtClass cc = sloader.makeClass("test5.JIRA250", sloader.get("test5.JIRA250Super"));
+        cc.addMethod(CtNewMethod.make(
+                "    public test5.JIRA250Bar getBar() {" + 
+                "        return super.getBar();\n" +
+                "    }\n", cc));
+        cc.addMethod(CtNewMethod.make("public int run() { getBar(); return 1; }", cc));
+        cc.writeFile();
+        Object obj = make(cc.getName());
+        assertEquals(1, invoke(obj, "run"));
+    }
+
+    public void testProceedToDefaultMethod() throws Exception {
+        CtClass cc = ClassPool.getDefault().get("test5.ProceedDefault");
+        CtMethod mth = cc.getDeclaredMethod("bar");
+        mth.instrument(new ExprEditor() {
+            public void edit(MethodCall c) throws CannotCompileException {
+                c.replace("$_ = $proceed($$) + 10000;");
+            }
+        });
+        cc.writeFile();
+        Object obj = make(cc.getName());
+        assertEquals(21713, invoke(obj, "run"));
+    }
+
+    public void testBadClass() throws Exception {
+        CtClass badClass = ClassPool.getDefault().makeClass("badClass");
+        String src = String.join(System.getProperty("line.separator"),
+                "public void eval () {",
+                "    if (true) {",
+                "        double t=0;",
+                "    } else {",
+                "        double t=0;",
+                "    }",
+                "    for (int i=0; i < 2; i++) {",
+                "        int a=0;",
+                "        int b=0;",
+                "        int c=0;",
+                "        int d=0;",
+                "        if (true) {",
+                "            int e = 0;",
+                "        }",
+                "    }",
+                "}");
+        System.out.println(src);
+        badClass.addMethod(CtMethod.make(src, badClass));
+        Class clazzz = badClass.toClass();
+        Object obj = clazzz.getConstructor().newInstance(); // <-- falls here
+    }
+
+    public void test83StackmapWithArrayType() throws Exception {
+    	final CtClass ctClass = sloader.get("test5.StackmapWithArray83");
+        final CtMethod method = ctClass.getDeclaredMethod("bytecodeVerifyError");
+        method.addLocalVariable("test_localVariable", CtClass.intType);
+        method.insertBefore("{ test_localVariable = 1; }");
+
+        final CtMethod method2 = ctClass.getDeclaredMethod("bytecodeVerifyError2");
+        method2.addLocalVariable("test_localVariable", CtClass.intType);
+        method2.insertBefore("{ test_localVariable = 1; }");
+
+        ctClass.writeFile();
+        Object obj = make(ctClass.getName());
+        assertEquals(1, invoke(obj, "run"));
+    }
+
+    public void testLoaderClassPath() throws Exception {
+        ClassPool cp = new ClassPool();
+        cp.appendClassPath(new LoaderClassPath(new Loader()));
+        assertNotNull(cp.get(Object.class.getName()));
+        assertNotNull(cp.get(this.getClass().getName()));
+    }
+
+    public void testAddDefaultMethod() throws Exception {
+        CtClass cc = sloader.makeInterface("test5.AddDefaultMethod");
+        cc.addMethod(CtNewMethod.make("static int foo() { return 1; }", cc));
+        cc.addMethod(CtNewMethod.make("public static int foo1() { return 1; }", cc));
+        cc.addMethod(CtNewMethod.make("public int foo2() { return 1; }", cc));
+        cc.addMethod(CtNewMethod.make("int foo3() { return 1; }", cc));
+        try {
+            cc.addMethod(CtNewMethod.make("private int foo4() { return 1; }", cc));
+            fail();
+        } catch (CannotCompileException e) {}
+        try {
+            cc.addMethod(CtNewMethod.make("private static int foo5() { return 1; }", cc));
+            fail();
+        } catch (CannotCompileException e) {}
+    }
+
+    public void testRemoveAnnotatino() throws Exception {
+        CtClass cc = sloader.get("test5.RemoveAnnotation");
+        AnnotationsAttribute aa
+            = (AnnotationsAttribute)cc.getClassFile().getAttribute(AnnotationsAttribute.invisibleTag);
+        assertTrue(aa.removeAnnotation("test5.RemoveAnno1"));
+        AttributeInfo ai = cc.getClassFile().removeAttribute(AnnotationsAttribute.invisibleTag);
+        assertEquals(ai.getName(), AnnotationsAttribute.invisibleTag);
+
+        CtMethod foo = cc.getDeclaredMethod("foo");
+        AnnotationsAttribute aa2 = (AnnotationsAttribute)foo.getMethodInfo().getAttribute(AnnotationsAttribute.invisibleTag);
+        assertTrue(aa2.removeAnnotation("test5.RemoveAnno1"));
+
+        CtMethod bar = cc.getDeclaredMethod("bar");
+        AnnotationsAttribute aa3 = (AnnotationsAttribute)bar.getMethodInfo().getAttribute(AnnotationsAttribute.invisibleTag);
+        assertFalse(aa3.removeAnnotation("test5.RemoveAnno1"));
+        assertTrue(aa3.removeAnnotation("test5.RemoveAnno2"));
+        AttributeInfo ai2 = bar.getMethodInfo().removeAttribute(AnnotationsAttribute.invisibleTag);
+        assertEquals(ai2.getName(), AnnotationsAttribute.invisibleTag);
+
+        CtMethod run = cc.getDeclaredMethod("run");
+        AttributeInfo ai3 = run.getMethodInfo().removeAttribute(AnnotationsAttribute.invisibleTag);
+        assertNull(ai3);
+
+        CtField baz = cc.getDeclaredField("baz");
+        AttributeInfo ai4 = baz.getFieldInfo().removeAttribute(AnnotationsAttribute.invisibleTag);
+        assertEquals(ai4.getName(), AnnotationsAttribute.invisibleTag);
+
+        cc.writeFile();
+        Object obj = make(cc.getName());
+        assertEquals(3, invoke(obj, "run"));
+    }
+
+    public void testInnerClassModifiers() throws Exception {
+        CtClass cc = sloader.get("test5.InnerModifier$NonStatic");
+        try {
+            cc.setModifiers(Modifier.PUBLIC | Modifier.STATIC);
+            fail();
+        }
+        catch (RuntimeException e) {
+            if (!e.getMessage().startsWith("cannot change "))
+                fail();
+        }
+
+        cc.setModifiers(Modifier.PUBLIC);
+        cc.writeFile();
+
+        assertEquals(Modifier.PUBLIC, cc.getModifiers());
+        InnerClassesAttribute ica = getInnerClassAttr(cc);
+        int i = ica.find("test5.InnerModifier$NonStatic");
+        assertTrue(i >= 0);
+        assertEquals(Modifier.PUBLIC, ica.accessFlags(i));
+
+        CtClass cc2 = sloader.get("test5.InnerModifier$Static");
+
+        InnerClassesAttribute ica3 = getInnerClassAttr(cc2);
+        int i3 = ica3.find("test5.InnerModifier$Static");
+        assertTrue(i3 >= 0);
+        assertEquals(AccessFlag.STATIC, ica3.accessFlags(i3));
+
+        cc2.setModifiers(Modifier.PROTECTED | Modifier.STATIC);
+        cc2.setModifiers(Modifier.PUBLIC);
+        cc2.writeFile();
+
+        assertEquals(Modifier.PUBLIC | Modifier.STATIC, cc2.getModifiers());
+        InnerClassesAttribute ica2 = getInnerClassAttr(cc2);
+        int i2 = ica2.find("test5.InnerModifier$Static");
+        assertTrue(i2 >= 0);
+        assertEquals(AccessFlag.PUBLIC | AccessFlag.STATIC, ica2.accessFlags(i2));
+
+        CtClass cc3 = cc.getDeclaringClass();
+        assertTrue(cc3.isModified());
+        cc3.writeFile();
+
+        InnerClassesAttribute ica4 = getInnerClassAttr(cc3);
+        int i4 = ica4.find("test5.InnerModifier$Static");
+        assertTrue(i4 >= 0);
+        assertEquals(AccessFlag.PUBLIC | AccessFlag.STATIC, ica4.accessFlags(i4));
+        int i5 = ica4.find("test5.InnerModifier$NonStatic");
+        assertTrue(i5 >= 0);
+        assertEquals(Modifier.PUBLIC, ica4.accessFlags(i5));
+    }
+
+    private InnerClassesAttribute getInnerClassAttr(CtClass cc) {
+        return (InnerClassesAttribute)cc.getClassFile2().getAttribute(InnerClassesAttribute.tag);
     }
 }
