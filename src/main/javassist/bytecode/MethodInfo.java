@@ -59,7 +59,7 @@ public class MethodInfo extends AttributeObservable{
     int name;
     String cachedName;
     int descriptor;
-    Map<String, AttributeInfo> attribute; // may be null
+    Map<String, AttributeInfo> attribute = new LinkedHashMap<String, AttributeInfo>();
 
     /**
      * If this value is true, Javassist maintains a <code>StackMap</code> attribute
@@ -81,7 +81,6 @@ public class MethodInfo extends AttributeObservable{
 
     private MethodInfo(ConstPool cp) {
         constPool = cp;
-        attribute = null;
     }
 
     /**
@@ -316,9 +315,6 @@ public class MethodInfo extends AttributeObservable{
      * @see AttributeInfo
      */
     public Map getAttributes() {
-        if (attribute == null)
-            attribute = new LinkedHashMap();
-
         return attribute;
     }
 
@@ -336,7 +332,7 @@ public class MethodInfo extends AttributeObservable{
      * @see #getAttributes()
      */
     public AttributeInfo getAttribute(String name) {
-        return AttributeInfo.lookup(attribute, name);
+        return attribute.get(name);
     }
 
     /**
@@ -346,9 +342,6 @@ public class MethodInfo extends AttributeObservable{
      * @see #getAttributes()
      */
     public void addAttribute(AttributeInfo info) {
-        if (attribute == null)
-            attribute = new LinkedHashMap();
-
         attribute.put(info.getName(), info);
     }
 
@@ -363,9 +356,7 @@ public class MethodInfo extends AttributeObservable{
      * @return an Exceptions attribute or null if it is not specified.
      */
     public ExceptionsAttribute getExceptionsAttribute() {
-        AttributeInfo info = AttributeInfo.lookup(attribute,
-                ExceptionsAttribute.tag);
-        return (ExceptionsAttribute)info;
+        return (ExceptionsAttribute) attribute.get(ExceptionsAttribute.tag);
     }
 
     /**
@@ -374,15 +365,14 @@ public class MethodInfo extends AttributeObservable{
      * @return a Code attribute or null if it is not specified.
      */
     public CodeAttribute getCodeAttribute() {
-        AttributeInfo info = AttributeInfo.lookup(attribute, CodeAttribute.tag);
-        return (CodeAttribute)info;
+        return (CodeAttribute) attribute.get(CodeAttribute.tag);
     }
 
     /**
      * Removes an Exception attribute.
      */
     public void removeExceptionsAttribute() {
-        AttributeInfo.remove(attribute, ExceptionsAttribute.tag);
+        attribute.remove(ExceptionsAttribute.tag);
     }
 
     /**
@@ -393,9 +383,6 @@ public class MethodInfo extends AttributeObservable{
      * <code>method_info</code> structure.
      */
     public void setExceptionsAttribute(ExceptionsAttribute cattr) {
-        if (attribute == null)
-            attribute = new LinkedHashMap();
-
         attribute.put(cattr.getName(), cattr);
     }
 
@@ -403,7 +390,7 @@ public class MethodInfo extends AttributeObservable{
      * Removes a Code attribute.
      */
     public void removeCodeAttribute() {
-        AttributeInfo.remove(attribute, CodeAttribute.tag);
+        attribute.remove(CodeAttribute.tag);
     }
 
     /**
@@ -414,9 +401,6 @@ public class MethodInfo extends AttributeObservable{
      * <code>method_info</code> structure.
      */
     public void setCodeAttribute(CodeAttribute cattr) {
-        if (attribute == null)
-            attribute = new LinkedHashMap();
-
         attribute.put(cattr.getName(), cattr);
     }
 
@@ -549,7 +533,7 @@ public class MethodInfo extends AttributeObservable{
         String desc2 = Descriptor.rename(desc, classnames);
         descriptor = destCp.addUtf8Info(desc2);
 
-        attribute = new LinkedHashMap();
+        attribute.clear();
         ExceptionsAttribute eattr = src.getExceptionsAttribute();
         if (eattr != null){
         	AttributeInfo c = eattr.copy(destCp, classnames);
@@ -568,7 +552,7 @@ public class MethodInfo extends AttributeObservable{
         name = in.readUnsignedShort();
         descriptor = in.readUnsignedShort();
         int n = in.readUnsignedShort();
-        attribute = new LinkedHashMap();
+        attribute.clear();
         for (int i = 0; i < n; ++i){
         	AttributeInfo c = AttributeInfo.read(constPool, in);
             attribute.put(c.getName(), c);
@@ -580,7 +564,7 @@ public class MethodInfo extends AttributeObservable{
         out.writeShort(name);
         out.writeShort(descriptor);
 
-        if (attribute == null)
+        if (attribute.isEmpty())
             out.writeShort(0);
         else {
             out.writeShort(attribute.size());

@@ -25,9 +25,14 @@ public class NoFieldException extends CompileError {
     /* NAME must be JVM-internal representation.
      */
     public NoFieldException(String name, ASTree e) {
-        super("no such field: " + name);
+        super("");
         fieldName = name;
         expr = e;
+    }
+    
+    @Override
+    public String getMessage() {
+        return "no such field: " + fieldName;
     }
 
     /* The returned name should be JVM-internal representation.

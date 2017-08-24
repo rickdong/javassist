@@ -50,13 +50,13 @@ import java.lang.ref.WeakReference;
  * @see ClassClassPath
  */
 public class LoaderClassPath implements ClassPath {
-    private WeakReference clref;
+    protected WeakReference<ClassLoader> clref;
 
     /**
      * Creates a search path representing a class loader.
      */
     public LoaderClassPath(ClassLoader cl) {
-        clref = new WeakReference(cl);
+        clref = new WeakReference<ClassLoader>(cl);
     }
 
     public String toString() {
@@ -93,12 +93,12 @@ public class LoaderClassPath implements ClassPath {
         if (url != null) {
             return url;
         }
-        String cname = JvmNamesCache.javaToJvmName(classname) + ".class";
         ClassLoader cl = (ClassLoader) clref.get();
         if (cl == null) {
             return null; // not found
         }
         else {
+            String cname = JvmNamesCache.javaToJvmName(classname) + ".class";
             url = cl.getResource(cname);
             if (url != null) {
                 URL prev = CACHE.putIfAbsent(classname, url);
@@ -110,7 +110,7 @@ public class LoaderClassPath implements ClassPath {
         }
     }
     
-    private static final ConcurrentMap<String, URL> CACHE = new ConcurrentHashMap<String, URL>();
+    private static final ConcurrentMap<String, URL> CACHE = new ConcurrentHashMap<String, URL>(25000);
 
     /**
      * Closes this class path.

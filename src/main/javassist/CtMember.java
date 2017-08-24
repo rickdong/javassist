@@ -58,33 +58,49 @@ public abstract class CtMember {
         public String getGenericSignature() { return null; }
         public void setGenericSignature(String sig) {}
 
-        private final List<CtConstructor> cons = new ArrayList<CtConstructor>();
-        private final List<CtConstructor> staticInits = new ArrayList<CtConstructor>();
-        private final Map<String, List<CtMethod>> methods = new HashMap<String, List<CtMethod>>();
-        private final List<CtMethod> methods2 = new ArrayList<CtMethod>();
-        private final Map<String, CtField> fields = new HashMap<String, CtField>();
-        private final Map<MethodInfo, CtBehavior> methodInfoToBehavior = new IdentityHashMap<MethodInfo, CtBehavior>(1000);
+        private final List<CtConstructor> cons = new ArrayList<>();
+        private final List<CtConstructor> staticInits = new ArrayList<>();
+        /** name -> descriptor -> list of method */
+        private final Map<String, Map<String,List<CtMethod>>> methods = new HashMap<>(100);
+        private final List<CtMethod> methods2 = new ArrayList<>(100);
+        private final Map<String, CtField> fields = new HashMap<>(100);
+        private final Map<MethodInfo, CtBehavior> methodInfoToBehavior = new IdentityHashMap<>(1000);
 
         Cache(CtClassType decl) {
             super(decl);
         }
-
+        
+        private final List<CtMethod> getMethods(String name, String descriptor){
+            Map<String, List<CtMethod>> map = methods.get(name);
+            return map == null ? null : map.get(descriptor);
+        }
+        
+        private final List<CtMethod> removeMethods(String name, String descriptor){
+            Map<String, List<CtMethod>> map = methods.get(name);
+            return map == null ? null : map.remove(descriptor);
+        }
+        
         @Override
         public void onChange(Object src, String name, Object oldValue, Object newValue) {
             if (AttributeObservable.NAME.equals(name)) {
                 if (src instanceof FieldInfo) {
                     CtField field = fields.remove(oldValue);
                     fields.put((String) newValue, field);
-                } else if (src instanceof MethodInfo) {
+                }
+                else if (src instanceof MethodInfo) {
                     MethodInfo mi = (MethodInfo) src;
-                    List<CtMethod> mths = methods.remove(oldValue + " " + mi.getDescriptor());
+                    List<CtMethod> mths = getMethods((String) oldValue, mi.getDescriptor());
                     if (mths != null) {
                         Iterator<CtMethod> it = mths.iterator();
                         while (it.hasNext()) {
                             CtMethod mth = it.next();
                             if (mth.getMethodInfo2().equals(src)) {
                                 it.remove();
-                                CollectionUtils.addToKeyedList(newValue + " " + mi.getDescriptor(), mth, methods);
+                                CollectionUtils.addToKeyedMapList(
+                                        (String) newValue,
+                                        mi.getDescriptor(),
+                                        mth,
+                                        methods);
                                 break;
                             }
                         }
@@ -102,17 +118,19 @@ public abstract class CtMember {
                         }
                     }
                 }
-            } else if (AttributeObservable.DESCRIPTOR.equals(name)) {
+            }
+            else if (AttributeObservable.DESCRIPTOR.equals(name)) {
                 if (src instanceof MethodInfo) {
                     MethodInfo mi = (MethodInfo) src;
-                    List<CtMethod> mths = methods.remove(mi.getName() + " " + oldValue);
+                    List<CtMethod> mths = removeMethods(mi.getName(), (String) oldValue);
                     if (mths != null) {
                         Iterator<CtMethod> it = mths.iterator();
                         while (it.hasNext()) {
                             CtMethod mth = it.next();
                             if (mth.getMethodInfo2().equals(src)) {
                                 it.remove();
-                                CollectionUtils.addToKeyedList(mi.getName() + " " + newValue, mth, methods);
+                                CollectionUtils
+                                        .addToKeyedMapList(mi.getName(), (String) newValue, mth, methods);
                                 break;
                             }
                         }
@@ -124,7 +142,7 @@ public abstract class CtMember {
         
         void addMethod(CtMethod method) {
             method.getMethodInfo2().addChangeListener(this);
-            CollectionUtils.addToKeyedList(method.getName() + " " + method.getSignature(), method, methods);
+            CollectionUtils.addToKeyedMapList(method.getName(), method.getSignature(), method, methods);
             methodInfoToBehavior.put(method.getMethodInfo2(), method);
             methods2.add(method);
         }
@@ -134,14 +152,10 @@ public abstract class CtMember {
         }
         
         CtMethod getMethod(String name, String desc) {
-            return getMethodByNameAndDesc(name + " " + desc);
-        }
-
-        CtMethod getMethodByNameAndDesc(String nameAndDesc) {
-            List<CtMethod> mths = methods.get(nameAndDesc);
+            List<CtMethod> mths = getMethods(name, desc);
             return mths == null || mths.isEmpty() ? null : mths.get(0);
         }
-        
+
         /* Both constructors and a class initializer.
          */
         void addConstructor(CtConstructor cons) {
@@ -226,17 +240,24 @@ public abstract class CtMember {
         void remove(CtMember mem) {
             if(mem instanceof CtMethod){
                 CtMethod mth = (CtMethod) mem;
-                Iterator<Entry<String, List<CtMethod>>> it = methods.entrySet().iterator();
-                while(it.hasNext()){
-                    List<CtMethod> val  = it.next().getValue();
-                    if(val.remove(mth)) {
-                        mth.getMethodInfo2().removeChangeListener(this);
-                        methodInfoToBehavior.remove(mth.getMethodInfo2());
-                        methods2.remove(mth);
-                        if(val.isEmpty()){
-                            it.remove();
+                Iterator<Entry<String, Map<String, List<CtMethod>>>> it = methods.entrySet().iterator();
+                while (it.hasNext()) {
+                    Map<String, List<CtMethod>> val = it.next().getValue();
+                    Iterator<List<CtMethod>> it2 = val.values().iterator();
+                    while (it2.hasNext()) {
+                        List<CtMethod> mths = it2.next();
+                        if (mths.remove(mth)) {
+                            mth.getMethodInfo2().removeChangeListener(this);
+                            methodInfoToBehavior.remove(mth.getMethodInfo2());
+                            methods2.remove(mth);
+                            if (mths.isEmpty()) {
+                                it2.remove();
+                                if (val.isEmpty()) {
+                                    it.remove();
+                                }
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
             }

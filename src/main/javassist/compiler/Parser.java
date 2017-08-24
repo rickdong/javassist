@@ -1098,7 +1098,7 @@ public final class Parser implements TokenId {
                 if (t == CLASS)
                     expr = parseDotClass(expr, 0);
                 else if (t == SUPER)
-                    expr = Expr.make('.', new Symbol(toClassName(expr)), new Keyword(t));
+                    expr = Expr.make('.', new Symbol(toClassName(expr)), Keyword.SUPER);
                 else if (t == Identifier) {
                     str = lex.getString();
                     expr = Expr.make('.', expr, new Member(str));

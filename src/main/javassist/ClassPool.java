@@ -531,8 +531,7 @@ public class ClassPool {
                 return clazz;
         }
         
-        String cname = classname.intern();
-        synchronized (cname) {
+        synchronized (this) {
             clazz = createCtClass(classname, useCache);
             if (clazz != null) {
                 // clazz.getName() != classname if classname is "[L<name>;".

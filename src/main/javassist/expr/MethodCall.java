@@ -168,6 +168,50 @@ public class MethodCall extends Expr {
     }
     */
 
+    public static interface ReplacementBytecodeCallback {
+        Bytecode getBytecode(ClassFile cf, int opCode, String classname, String methodname,
+                String signature);
+    }
+    
+    public void replace(ReplacementBytecodeCallback cb) throws CannotCompileException {
+        ClassFile cf = thisClass.getClassFile(); // to call checkModify().
+        ConstPool constPool = getConstPool();
+        int pos = currentPos;
+        int index = iterator.u16bitAt(pos + 1);
+
+        String classname, methodname, signature;
+        int opcodeSize;
+        int c = iterator.byteAt(pos);
+        switch (c) {
+            case INVOKEINTERFACE:
+                opcodeSize = 5;
+                classname = constPool.getInterfaceMethodrefClassName(index);
+                methodname = constPool.getInterfaceMethodrefName(index);
+                signature = constPool.getInterfaceMethodrefType(index);
+                break;
+            case INVOKESTATIC:
+            case INVOKESPECIAL:
+            case INVOKEVIRTUAL:
+                opcodeSize = 3;
+                classname = constPool.getMethodrefClassName(index);
+                methodname = constPool.getMethodrefName(index);
+                signature = constPool.getMethodrefType(index);
+                break;
+            default:
+                throw new CannotCompileException("not method invocation");
+        }
+
+        try {
+            Bytecode newByteCode = cb.getBytecode(cf, c, classname, methodname, signature);
+            if (newByteCode != null) {
+                replace0(pos, newByteCode, opcodeSize);
+            }
+        }
+        catch (BadBytecode e) {
+            throw new CannotCompileException("broken method");
+        }
+    }
+    
     /**
      * Replaces the method call with the bytecode derived from
      * the given source text.
@@ -185,21 +229,24 @@ public class MethodCall extends Expr {
         String classname, methodname, signature;
         int opcodeSize;
         int c = iterator.byteAt(pos);
-        if (c == INVOKEINTERFACE) {
-            opcodeSize = 5;
-            classname = constPool.getInterfaceMethodrefClassName(index);
-            methodname = constPool.getInterfaceMethodrefName(index);
-            signature = constPool.getInterfaceMethodrefType(index);
+        switch (c) {
+            case INVOKEINTERFACE:
+                opcodeSize = 5;
+                classname = constPool.getInterfaceMethodrefClassName(index);
+                methodname = constPool.getInterfaceMethodrefName(index);
+                signature = constPool.getInterfaceMethodrefType(index);
+                break;
+            case INVOKESTATIC:
+            case INVOKESPECIAL:
+            case INVOKEVIRTUAL:
+                opcodeSize = 3;
+                classname = constPool.getMethodrefClassName(index);
+                methodname = constPool.getMethodrefName(index);
+                signature = constPool.getMethodrefType(index);
+                break;
+            default:
+                throw new CannotCompileException("not method invocation");
         }
-        else if (c == INVOKESTATIC
-                 || c == INVOKESPECIAL || c == INVOKEVIRTUAL) {
-            opcodeSize = 3;
-            classname = constPool.getMethodrefClassName(index);
-            methodname = constPool.getMethodrefName(index);
-            signature = constPool.getMethodrefType(index);
-        }
-        else
-            throw new CannotCompileException("not method invocation");
 
         Javac jc = new Javac(thisClass);
         ClassPool cp = thisClass.getClassPool();

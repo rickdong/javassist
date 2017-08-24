@@ -1045,10 +1045,6 @@ public abstract class CtClass {
         throw new NotFoundException(name);
     }
     
-    public CtMethod getDeclaredMethodByNameAndDesc(String nameAndDesc) throws NotFoundException {
-        throw new NotFoundException(nameAndDesc);
-    }
-
     /**
      * Makes an empty class initializer (static constructor).
      * If the class already includes a class initializer,

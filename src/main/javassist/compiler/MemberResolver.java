@@ -16,9 +16,9 @@
 
 package javassist.compiler;
 
-import java.util.Hashtable;
-import java.lang.ref.WeakReference;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.List;
 import java.util.Iterator;
 
@@ -275,7 +275,7 @@ public class MemberResolver implements TokenId {
         }
         catch (CompileError e) {
             // EXPR might be part of a qualified class name.
-            throw new NoFieldException(jvmClassName + "/" + field, expr);
+            throw new NoFieldException(new StringBuilder(jvmClassName).append("/").append(field).toString(), expr);
         }
 
         try {
@@ -394,13 +394,13 @@ public class MemberResolver implements TokenId {
     public CtClass lookupClass(String name, boolean notCheckInner)
         throws CompileError
     {
-        Hashtable cache = getInvalidNames();
-        Object found = cache.get(name);
+        ConcurrentMap<String, String> cache = getInvalidNames();
+        String found = cache.get(name);
         if (found == INVALID)
             throw new CompileError("no such class: " + name);
         else if (found != null)
             try {
-                return classPool.get((String)found);
+                return classPool.get(found);
             }
             catch (NotFoundException e) {}
 
@@ -411,29 +411,25 @@ public class MemberResolver implements TokenId {
         catch (NotFoundException e) {
             cc = searchImports(name);
         }
-
-        cache.put(name, cc.getName());
+        cache.putIfAbsent(name, cc.getName());
         return cc;
     }
 
     private static final String INVALID = "<invalid>";
-    private static WeakHashMap invalidNamesMap = new WeakHashMap();
-    private Hashtable invalidNames = null;
+    private final static WeakHashMap<ClassPool, ConcurrentMap<String,String>> invalidNamesMap = new WeakHashMap<>();
+    private ConcurrentMap<String, String> invalidNames = null;
 
     // for unit tests
     public static int getInvalidMapSize() { return invalidNamesMap.size(); }
 
-    private Hashtable getInvalidNames() {
-        Hashtable ht = invalidNames;
+    private ConcurrentMap<String, String> getInvalidNames() {
+        ConcurrentMap<String, String> ht = invalidNames;
         if (ht == null) {
             synchronized (MemberResolver.class) {
-                WeakReference ref = (WeakReference)invalidNamesMap.get(classPool);
-                if (ref != null)
-                    ht = (Hashtable)ref.get();
-
+                ht = invalidNamesMap.get(classPool);
                 if (ht == null) {
-                    ht = new Hashtable();
-                    invalidNamesMap.put(classPool, new WeakReference(ht));
+                    ht = new ConcurrentHashMap<String, String>(5000);
+                    invalidNamesMap.put(classPool, ht);
                 }
             }
 
@@ -477,8 +473,11 @@ public class MemberResolver implements TokenId {
                 cc = classPool.get(classname);
             }
             catch (NotFoundException e) {
+                if(notCheckInner){
+                    throw e;
+                }
                 int i = classname.lastIndexOf('.');
-                if (notCheckInner || i < 0)
+                if (i < 0)
                     throw e;
                 else {
                     StringBuilder sbuf = new StringBuilder(classname);

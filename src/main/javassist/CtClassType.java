@@ -16,7 +16,6 @@
 
 package javassist;
 
-import java.lang.ref.WeakReference;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
@@ -24,16 +23,23 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.SoftReference;
+import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
+import javassist.CtMember.Cache;
 import javassist.bytecode.AccessFlag;
 import javassist.bytecode.AttributeInfo;
 import javassist.bytecode.AnnotationsAttribute;
-import javassist.bytecode.AttributeChangeListener;
 import javassist.bytecode.BadBytecode;
 import javassist.bytecode.Bytecode;
 import javassist.bytecode.ClassFile;
@@ -68,7 +74,7 @@ class CtClassType extends CtClass {
     ClassFile classfile;
     byte[] rawClassfile;    // backup storage
 
-    private volatile WeakReference memberCache;
+    private volatile SoftReference<Cache> memberCache;
     private AccessorMaker accessors;
 
     private FieldInitLink fieldInitializers;
@@ -79,6 +85,30 @@ class CtClassType extends CtClass {
     private int getCount;
     private static final int GET_THRESHOLD = 2;     // see compress()
 
+    static {
+        Timer srTimer = new Timer("ctClassTypeSfRefCleaner", true);
+        srTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    long now = System.currentTimeMillis();
+                    for (WeakReference<CtClassType> r : REFS) {
+                        CtClassType cc = r.get();
+                        if (cc == null) {
+                            REFS.remove(r);
+                        }
+                        else if (now - cc.lastCacheAccessTimestamp > 30000) {
+                            cc.memberCache = null;
+                        }
+                    }
+                }
+                catch (Exception ex) {
+
+                }
+            }
+        }, 0, TimeUnit.SECONDS.toMillis(30));
+    }
+    
     CtClassType(String name, ClassPool cp) {
         super(name);
         classPool = cp;
@@ -91,6 +121,7 @@ class CtClassType extends CtClass {
         hiddenMethods = null;
         uniqueNumberSeed = 0;
         getCount = 0;
+        REFS.add(new WeakReference<CtClassType>(this));
     }
 
     CtClassType(InputStream ins, ClassPool cp) throws IOException {
@@ -899,26 +930,32 @@ class CtClassType extends CtClass {
      * Returns null if members are not cached.
      */
     protected CtMember.Cache hasMemberCache() {
-        WeakReference cache = memberCache;
+        SoftReference<Cache> cache = memberCache;
         if (cache != null)
-            return (CtMember.Cache)cache.get();
+            return cache.get();
         else
             return null;
     }
 
+    private static final Set<WeakReference<CtClassType>> REFS = Collections
+            .newSetFromMap(new ConcurrentHashMap<WeakReference<CtClassType>, Boolean>());
+    
+    private volatile long lastCacheAccessTimestamp;
+    
     protected CtMember.Cache getMembers() {
+        lastCacheAccessTimestamp = System.currentTimeMillis();
         CtMember.Cache cache = null;
-        if (memberCache != null && (cache = (CtMember.Cache) memberCache.get()) != null) {
+        if (memberCache != null && (cache = memberCache.get()) != null) {
             return cache;
         }
         synchronized (this) {
-            if (memberCache != null && (cache = (CtMember.Cache) memberCache.get()) != null) {
+            if (memberCache != null && (cache = memberCache.get()) != null) {
                 return cache;
             }
             cache = new CtMember.Cache(this);
             makeFieldCache(cache);
             makeBehaviorCache(cache);
-            memberCache = new WeakReference(cache);
+            memberCache = new SoftReference<Cache>(cache);
         }
         return cache;
     }
@@ -989,11 +1026,11 @@ class CtClassType extends CtClass {
         throws NotFoundException
     {
         if (f == null) {
-            String msg = "field: " + name;
+            StringBuilder sb = new StringBuilder("field: ").append(name);
             if (desc != null)
-                msg += " type " + desc;
+                sb.append(" type ").append(desc);
 
-            throw new NotFoundException(msg + " in " + getName());
+            throw new NotFoundException(sb.append(" in ").append(getName()).toString());
         }
         else
             return f;
@@ -1182,17 +1219,18 @@ class CtClassType extends CtClass {
     }
 
     public CtMethod getDeclaredMethod(String name, String desc) throws NotFoundException {
-        return getDeclaredMethodByNameAndDesc(name+" "+desc);
-    }
-    
-    @Override
-    public CtMethod getDeclaredMethodByNameAndDesc(String nameAndDesc) throws NotFoundException {
-        CtMethod mth = getMembers().getMethodByNameAndDesc(nameAndDesc);
+        CtMethod mth = getMembers().getMethod(name, desc);
         if (mth != null) {
             return mth;
         }
-        throw new NotFoundException(nameAndDesc + " is not found in " + getName());
+        throw new NotFoundException(new StringBuilder(name)
+                .append(" ")
+                .append(desc)
+                .append(" is not found in ")
+                .append(getName())
+                .toString());
     }
+    
     
     public CtMethod getDeclaredMethod(String name, CtClass[] params)
         throws NotFoundException

@@ -90,15 +90,17 @@ public class ExprEditor {
         while (iterator.hasNext())
             if (loopBody(iterator, clazz, minfo, context))
                 edited = true;
-
-        ExceptionTable et = codeAttr.getExceptionTable();
-        int n = et.size();
-        for (int i = 0; i < n; ++i) {
-            Handler h = new Handler(et, i, iterator, clazz, minfo);
-            edit(h);
-            if (h.edited()) {
-                edited = true;
-                context.updateMax(h.locals(), h.stack());
+        
+        if(canEditException()) {
+            ExceptionTable et = codeAttr.getExceptionTable();
+            int n = et.size();
+            for (int i = 0; i < n; ++i) {
+                Handler h = new Handler(et, i, iterator, clazz, minfo);
+                edit(h);
+                if (h.edited()) {
+                    edited = true;
+                    context.updateMax(h.locals(), h.stack());
+                }
             }
         }
 
@@ -274,6 +276,10 @@ public class ExprEditor {
         }
     }
 
+    protected boolean canEditException(){
+        return true;
+    }
+    
     protected boolean canEditFieldAccess() {
         return true;
     }

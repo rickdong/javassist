@@ -1181,7 +1181,7 @@ public final class ConstPool {
     }
 
     private static HashMap makeItemsCache(LongVector items) {
-        HashMap cache = new HashMap();
+        HashMap cache = new HashMap(500);
         int i = 1;
         while (true) {
             ConstInfo info = items.elementAt(i++);
