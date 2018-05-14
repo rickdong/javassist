@@ -20,6 +20,8 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.List;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.Iterator;
 
 import javassist.*;
@@ -416,7 +418,7 @@ public class MemberResolver implements TokenId {
     }
 
     private static final String INVALID = "<invalid>";
-    private final static WeakHashMap<ClassPool, ConcurrentMap<String,String>> invalidNamesMap = new WeakHashMap<>();
+    private final static WeakHashMap<ClassPool, Reference<ConcurrentMap<String,String>>> invalidNamesMap = new WeakHashMap<>();
     private ConcurrentMap<String, String> invalidNames = null;
 
     // for unit tests
@@ -426,10 +428,13 @@ public class MemberResolver implements TokenId {
         ConcurrentMap<String, String> ht = invalidNames;
         if (ht == null) {
             synchronized (MemberResolver.class) {
-                ht = invalidNamesMap.get(classPool);
+                Reference<ConcurrentMap<String,String>> ref = invalidNamesMap.get(classPool);
+                if (ref != null)
+                    ht = ref.get();
+                
                 if (ht == null) {
                     ht = new ConcurrentHashMap<String, String>(5000);
-                    invalidNamesMap.put(classPool, ht);
+                    invalidNamesMap.put(classPool, new WeakReference<ConcurrentMap<String,String>>(ht));
                 }
             }
 

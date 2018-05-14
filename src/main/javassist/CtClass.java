@@ -1356,7 +1356,7 @@ public abstract class CtClass {
     public void detach() {
         ClassPool cp = getClassPool();
         CtClass obj = cp.removeCached(getName());
-        if (obj != this)
+        if (obj != this && obj != null)
             cp.cacheCtClass(getName(), obj, false);
     }
 

@@ -23,8 +23,6 @@ import javassist.NotFoundException;
 import javassist.util.JvmNamesCache;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * A support class for dealing with descriptors.
@@ -495,7 +493,6 @@ public class Descriptor {
         }
     }
 
-    private static final ConcurrentMap<String, Integer> numOfParametersCache = new ConcurrentHashMap();
     /**
      * Returns the number of the prameters included in the given
      * descriptor.
@@ -503,10 +500,6 @@ public class Descriptor {
      * @param desc descriptor
      */
     public static int numOfParameters(String desc) {
-        Integer ret = numOfParametersCache.get(desc);
-        if (ret != null) {
-            return ret;
-        }
         int n = 0;
         int i = 1;
         for (;;) {
@@ -526,10 +519,6 @@ public class Descriptor {
                 ++i;
 
             ++n;
-        }
-        Integer prev = numOfParametersCache.putIfAbsent(desc, n);
-        if (prev != null) {
-            n = prev;
         }
         return n;
     }

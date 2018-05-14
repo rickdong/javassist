@@ -8,7 +8,7 @@
     simple.  It is a class library for editing bytecodes in Java.
   </description>
   <!-- <version>3.22.0-CR2</version> -->
-  <version>3.20.0-GA</version>
+  <version>3.20.0-GA-atom</version>
   <name>Javassist</name>
   <url>http://www.javassist.org/</url>
 

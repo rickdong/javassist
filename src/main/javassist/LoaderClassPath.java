@@ -18,13 +18,13 @@ package javassist;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import javassist.util.ConcurrentWeakHashMap;
 import javassist.util.JvmNamesCache;
-
-import java.lang.ref.WeakReference;
 
 /**
  * A class search-path representing a class loader.
@@ -50,6 +50,9 @@ import java.lang.ref.WeakReference;
  * @see ClassClassPath
  */
 public class LoaderClassPath implements ClassPath {
+
+    private static final ConcurrentWeakHashMap<ClassLoader, ConcurrentMap<String, URL>> CACHE = new ConcurrentWeakHashMap<ClassLoader, ConcurrentMap<String, URL>>();
+
     protected WeakReference<ClassLoader> clref;
 
     /**
@@ -89,28 +92,32 @@ public class LoaderClassPath implements ClassPath {
      * @return null if the class file could not be found. 
      */
     public URL find(String classname) {
-        URL url = CACHE.get(classname);
-        if (url != null) {
-            return url;
-        }
         ClassLoader cl = (ClassLoader) clref.get();
         if (cl == null) {
             return null; // not found
         }
-        else {
-            String cname = JvmNamesCache.javaToJvmName(classname) + ".class";
-            url = cl.getResource(cname);
-            if (url != null) {
-                URL prev = CACHE.putIfAbsent(classname, url);
-                if (prev != null) {
-                    url = prev;
-                }
+        ConcurrentMap<String, URL> m = CACHE.get(cl);
+        if (m == null) {
+            m = new ConcurrentHashMap<String, URL>();
+            ConcurrentMap<String, URL> prev = CACHE.putIfAbsent(cl, m);
+            if (prev != null) {
+                m = prev;
             }
+        }
+        URL url = m.get(classname);
+        if (url != null) {
             return url;
         }
+        String cname = JvmNamesCache.javaToJvmName(classname) + ".class";
+        url = cl.getResource(cname);
+        if (url != null) {
+            URL prev = m.putIfAbsent(classname, url);
+            if (prev != null) {
+                url = prev;
+            }
+        }
+        return url;
     }
-    
-    private static final ConcurrentMap<String, URL> CACHE = new ConcurrentHashMap<String, URL>(25000);
 
     /**
      * Closes this class path.

@@ -97,8 +97,9 @@ class CtClassType extends CtClass {
                         if (cc == null) {
                             REFS.remove(r);
                         }
-                        else if (now - cc.lastCacheAccessTimestamp > 30000) {
+                        else if (now - cc.lastCacheAccessTimestamp > 5000) {
                             cc.memberCache = null;
+                            cc.detach();
                         }
                     }
                 }
@@ -106,7 +107,7 @@ class CtClassType extends CtClass {
 
                 }
             }
-        }, 0, TimeUnit.SECONDS.toMillis(30));
+        }, 0, TimeUnit.SECONDS.toMillis(5));
     }
     
     CtClassType(String name, ClassPool cp) {
