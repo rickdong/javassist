@@ -20,8 +20,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -133,6 +133,18 @@ public final class ClassFile implements AttributeChangeListener {
     public static final int JAVA_9 = 53;
 
     /**
+     * The major version number of class files
+     * for JDK 10.
+     */
+    public static final int JAVA_10 = 54;
+
+    /**
+     * The major version number of class files
+     * for JDK 11.
+     */
+    public static final int JAVA_11 = 55;
+
+    /**
      * The major version number of class files created
      * from scratch.  The default value is 47 (JDK 1.3).
      * It is 49 (JDK 1.5)
@@ -145,6 +157,10 @@ public final class ClassFile implements AttributeChangeListener {
      * if the JVM supports <code>java.util.function.Function</code>.
      * It is 53 (JDK 1.9)
      * if the JVM supports <code>java.lang.reflect.Module</code>.
+     * It is 54 (JDK 10)
+     * if the JVM supports <code>java.util.List.copyOf(Collection)</code>.
+     * It is 55 (JDK 11)
+     * if the JVM supports <code>java.util.Optional.isEmpty()</code>.
      */
     public static final int MAJOR_VERSION;
 
@@ -161,6 +177,10 @@ public final class ClassFile implements AttributeChangeListener {
             ver = JAVA_8;
             Class.forName("java.lang.Module");
             ver = JAVA_9;
+            List.class.getMethod("copyOf", Collection.class);
+            ver = JAVA_10;
+            Class.forName("java.util.Optional").getMethod("isEmpty");
+            ver = JAVA_11;
         }
         catch (Throwable t) {}
         MAJOR_VERSION = ver;
@@ -219,11 +239,7 @@ public final class ClassFile implements AttributeChangeListener {
     }
 
     private static String getSourcefileName(String qname) {
-        int index = qname.lastIndexOf('.');
-        if (index >= 0)
-            qname = qname.substring(index + 1);
-
-        return qname + ".java";
+        return qname.replaceAll("^.*\\.","") + ".java";
     }
 
     /**
@@ -258,12 +274,10 @@ public final class ClassFile implements AttributeChangeListener {
         if (sc != null)
             superClass = cp.addClassInfo(getSuperclass());
 
-        if (interfaces != null) {
-            int n = interfaces.length;
-            for (int i = 0; i < n; ++i)
+        if (interfaces != null)
+            for (int i = 0; i < interfaces.length; ++i)
                 interfaces[i]
                     = cp.addClassInfo(constPool.getClassInfo(interfaces[i]));
-        }
 
         return cp;
     }
@@ -291,7 +305,7 @@ public final class ClassFile implements AttributeChangeListener {
             newAttributes.put(visibleAnnotations.getName(), visibleAnnotations);
         }
 
-        AttributeInfo signature 
+        AttributeInfo signature
             = getAttribute(SignatureAttribute.tag);
         if (signature != null) {
             signature = signature.copy(cp, null);
@@ -541,9 +555,8 @@ public final class ClassFile implements AttributeChangeListener {
      *            representation like <code>java/lang/Object</code>.
      * @see #renameClass(String,String)
      */
-    public final void renameClass(final Map classnames) {
-        String jvmNewThisName = (String)classnames.get(Descriptor
-                .toJvmName(thisclassname));
+    public final void renameClass(final Map<String,String> classnames) {
+        String jvmNewThisName = classnames.get(Descriptor.toJvmName(thisclassname));
         if (jvmNewThisName != null)
             thisclassname = Descriptor.toJavaName(jvmNewThisName);
 
@@ -574,7 +587,7 @@ public final class ClassFile implements AttributeChangeListener {
      * Internal-use only.
      * <code>CtClass.getRefClasses()</code> calls this method. 
      */
-    public final void getRefClasses(final Map classnames) {
+    public final void getRefClasses(final Map<String,String> classnames) {
         constPool.renameClass(classnames);
 
         AttributeInfo.getRefClasses(attributes, classnames);
@@ -596,7 +609,6 @@ public final class ClassFile implements AttributeChangeListener {
                 AttributeInfo.getRefClasses(info.getAttributes(), classnames);
             }
         });
-        
     }
 
     /**
@@ -643,9 +655,8 @@ public final class ClassFile implements AttributeChangeListener {
         cachedInterfaces = null;
         cacheInterfaces2.clear();
         if (nameList != null) {
-            int n = nameList.length;
-            interfaces = new int[n];
-            for (int i = 0; i < n; ++i)
+            interfaces = new int[nameList.length];
+            for (int i = 0; i < nameList.length; ++i)
                 interfaces[i] = constPool.addClassInfo(nameList[i]);
         }
     }
@@ -772,6 +783,7 @@ public final class ClassFile implements AttributeChangeListener {
     public FieldInfo getField(String name){
         return fields.get(name);
     }
+
     
     public List<MethodInfo> getMethods(String name){
         List<MethodInfo> ret = methods.get(name);
@@ -854,14 +866,11 @@ public final class ClassFile implements AttributeChangeListener {
         if (desc.equals(newDesc)) {
             if (notBridgeMethod(minfo))
                 return true;
-            else {
-            	// if the bridge method with the same signature
-            	// already exists, replace it.
-                removeMethod(minfo);
-                return false;
-            }
+            // if the bridge method with the same signature
+            // already exists, replace it.
+            removeMethod(minfo);
+            return false;
         }
-        else
         	return false;
            // return notBridgeMethod(minfo) && notBridgeMethod(newMethod);
     }
@@ -895,7 +904,7 @@ public final class ClassFile implements AttributeChangeListener {
      * {@link AnnotationsAttribute#visibleTag} or
      * {@link AnnotationsAttribute#invisibleTag}. 
      * </p>
-     * 
+     *
      * @param name          attribute name
      * @see #getAttributes()
      */
@@ -935,8 +944,7 @@ public final class ClassFile implements AttributeChangeListener {
             = (SourceFileAttribute)getAttribute(SourceFileAttribute.tag);
         if (sf == null)
             return null;
-        else
-            return sf.getFileName();
+        return sf.getFileName();
     }
 
     private void read(DataInputStream in) throws IOException {

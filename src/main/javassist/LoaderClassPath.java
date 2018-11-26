@@ -62,6 +62,7 @@ public class LoaderClassPath implements ClassPath {
         clref = new WeakReference<ClassLoader>(cl);
     }
 
+    @Override
     public String toString() {
         Object cl = null;
         if (clref != null)
@@ -75,6 +76,7 @@ public class LoaderClassPath implements ClassPath {
      * This method calls <code>getResourceAsStream(String)</code>
      * on the class loader.
      */
+    @Override
     public InputStream openClassfile(String classname) {
         URL url = find(classname);
         try {
@@ -91,6 +93,7 @@ public class LoaderClassPath implements ClassPath {
      *
      * @return null if the class file could not be found. 
      */
+    @Override
     public URL find(String classname) {
         ClassLoader cl = (ClassLoader) clref.get();
         if (cl == null) {

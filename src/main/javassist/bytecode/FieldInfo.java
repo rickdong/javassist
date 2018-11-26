@@ -78,6 +78,7 @@ public final class FieldInfo extends AttributeObservable {
     /**
      * Returns a string representation of the object.
      */
+    @Override
     public String toString() {
         return getName() + " " + getDescriptor();
     }
@@ -113,13 +114,13 @@ public final class FieldInfo extends AttributeObservable {
             newAttributes.put(visibleAnnotations.getName(), visibleAnnotations);
         }
 
-        AttributeInfo signature 
+        AttributeInfo signature
             = getAttribute(SignatureAttribute.tag);
         if (signature != null) {
             signature = signature.copy(cp, null);
             newAttributes.put(signature.getName(), signature);
         }
-        
+
         int index = getConstantValue();
         if (index != 0) {
             index = constPool.copy(index, cp, null);
@@ -221,8 +222,7 @@ public final class FieldInfo extends AttributeObservable {
             = (ConstantAttribute)getAttribute(ConstantAttribute.tag);
         if (attr == null)
             return 0;
-        else
-            return attr.getConstantValue();
+        return attr.getConstantValue();
     }
 
     /**

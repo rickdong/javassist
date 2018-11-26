@@ -16,11 +16,19 @@
 
 package javassist.tools.reflect;
 
-import java.util.Iterator;
-import javassist.*;
+import javassist.CannotCompileException;
+import javassist.ClassPool;
+import javassist.CodeConverter;
+import javassist.CtClass;
+import javassist.CtField;
+import javassist.CtMethod;
 import javassist.CtMethod.ConstParameter;
 import javassist.bytecode.ClassFile;
 import javassist.bytecode.ClassFile.MethodInfoCallback;
+import javassist.CtNewMethod;
+import javassist.Modifier;
+import javassist.NotFoundException;
+import javassist.Translator;
 import javassist.bytecode.BadBytecode;
 import javassist.bytecode.MethodInfo;
 
@@ -106,6 +114,7 @@ public class Reflection implements Translator {
     /**
      * Initializes the object.
      */
+    @Override
     public void start(ClassPool pool) throws NotFoundException {
         classPool = pool;
         final String msg
@@ -131,6 +140,7 @@ public class Reflection implements Translator {
      * Inserts hooks for intercepting accesses to the fields declared
      * in reflective classes.
      */
+    @Override
     public void onLoad(ClassPool pool, String classname)
         throws CannotCompileException, NotFoundException
     {
@@ -177,8 +187,8 @@ public class Reflection implements Translator {
      * @see javassist.tools.reflect.Metaobject
      * @see javassist.tools.reflect.ClassMetaobject
      */
-    public boolean makeReflective(Class clazz,
-                                  Class metaobject, Class metaclass)
+    public boolean makeReflective(Class<?> clazz,
+                                  Class<?> metaobject, Class<?> metaclass)
         throws CannotCompileException, NotFoundException
     {
         return makeReflective(clazz.getName(), metaobject.getName(),
@@ -249,8 +259,7 @@ public class Reflection implements Translator {
     {
         if (clazz.getAttribute("Reflective") != null)
             return false;       // this is already reflective.
-        else
-            clazz.setAttribute("Reflective", new byte[0]);
+        clazz.setAttribute("Reflective", new byte[0]);
 
         CtClass mlevel = classPool.get("javassist.tools.reflect.Metalevel");
         boolean addMeta = !clazz.subtypeOf(mlevel);

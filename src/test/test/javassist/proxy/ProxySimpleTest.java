@@ -1,7 +1,5 @@
 package test.javassist.proxy;
 
-import junit.framework.TestCase;
-
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
@@ -13,7 +11,9 @@ import javassist.util.proxy.MethodFilter;
 import javassist.util.proxy.MethodHandler;
 import javassist.util.proxy.Proxy;
 import javassist.util.proxy.ProxyFactory;
+import junit.framework.TestCase;
 
+@SuppressWarnings({"rawtypes","unchecked"})
 public class ProxySimpleTest extends TestCase {
 
     String testResult;
@@ -84,6 +84,9 @@ public class ProxySimpleTest extends TestCase {
     }
 
     public static class ReadWriteData implements Serializable {
+        /** default serialVersionUID */
+        private static final long serialVersionUID = 1L;
+
         public int foo() { return 4; }
     }
 
@@ -102,10 +105,16 @@ public class ProxySimpleTest extends TestCase {
     }
 
     public static class WriteReplace implements Serializable {
+        /** default serialVersionUID */
+        private static final long serialVersionUID = 1L;
+
         public Object writeReplace() { return this; }
     }
 
     public static class WriteReplace2 implements Serializable {
+        /** default serialVersionUID */
+        private static final long serialVersionUID = 1L;
+
         public Object writeReplace(int i) { return Integer.valueOf(i); }
     }
 
@@ -275,5 +284,82 @@ public class ProxySimpleTest extends TestCase {
         void foo(int i) { result += "p"; }
         protected void bar(int i) { result += "q"; }
         public void baz(int i) { result += "r"; }
+    }
+    
+
+    String value267;
+    
+    public void testJIRA267() throws Exception {
+    	Extended267 extended267 = new Extended267();
+    	for (Method method: extended267.getClass().getMethods()) {
+    		System.out.println(method.getName() + "::" + method.getModifiers() + ":" + method.getParameterCount() + ":" + method.isSynthetic() + ":" + method.isBridge());
+    	}
+        ProxyFactory factory = new ProxyFactory();
+        factory.setSuperclass(Extended267.class);
+        Extended267 e = (Extended267)factory.create(null, null, new MethodHandler() {
+            @Override
+            public Object invoke(Object self, Method thisMethod,
+                    Method proceed, Object[] args) throws Throwable {
+                value267 += thisMethod.getDeclaringClass().getName();
+                return proceed.invoke(self, args);
+            }
+        });
+
+        value267 = "";
+        assertEquals("base", e.base());
+        System.out.println(value267);
+        assertEquals(Extended267.class.getName(), value267);
+
+        value267 = "";
+        assertEquals("base2", e.base("2"));
+        System.out.println(value267);
+        assertEquals(Extended267.class.getName(), value267); 
+        
+        value267 = "";
+        assertEquals("extended22", e.base(2));
+        System.out.println(value267);
+        assertEquals(Extended267.class.getName(), value267);   	
+    }
+    
+    private static abstract class Base267 {
+        public String base() { return "base"; }
+        public String base(String s) { return "base" + s; }
+        public String base(Integer i) { return "base" + i; }
+    }
+
+    public static class Extended267 extends Base267 {     	
+        public String base(Integer i) { return "extended" + i + i; }
+    }
+
+    String value267b;
+    
+    public void testJIRA267b() throws Exception {
+        Extended267b extended267 = new Extended267b();
+        ProxyFactory factory = new ProxyFactory();
+        factory.setSuperclass(Extended267b.class);
+        Extended267b e = (Extended267b)factory.create(null, null, new MethodHandler() {
+            @Override
+            public Object invoke(Object self, Method thisMethod,
+                    Method proceed, Object[] args) throws Throwable {
+                value267b += thisMethod.getDeclaringClass().getName();
+                value267b += ";" + thisMethod.getReturnType().getName();
+                return proceed.invoke(self, args);
+            }
+        });
+
+        value267b = "";
+        assertEquals("extended", e.base());
+        System.out.println(value267b);
+        assertEquals(Extended267b.class.getName() + ";" + String.class.getName(), value267b);
+    }
+
+    public static class Base267b {
+        public Object base() { return "base"; }
+    }
+
+    // Extended267b has a bridge method for base():Object,
+    // since Extended267b#base() is covariant.
+    public static class Extended267b extends Base267b {
+        public String base() { return "extended"; }
     }
 }

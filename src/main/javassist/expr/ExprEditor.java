@@ -16,9 +16,14 @@
 
 package javassist.expr;
 
-import javassist.bytecode.*;
-import javassist.CtClass;
 import javassist.CannotCompileException;
+import javassist.CtClass;
+import javassist.bytecode.BadBytecode;
+import javassist.bytecode.CodeAttribute;
+import javassist.bytecode.CodeIterator;
+import javassist.bytecode.ExceptionTable;
+import javassist.bytecode.MethodInfo;
+import javassist.bytecode.Opcode;
 
 /**
  * A translator of method bodies.
@@ -30,7 +35,7 @@ import javassist.CannotCompileException;
  * <p>If <code>instrument()</code> is called in
  * <code>CtMethod</code>, the method body is scanned from the beginning
  * to the end.
- * Whenever an expression, such as a method call and a <tt>new</tt>
+ * Whenever an expression, such as a method call and a <code>new</code>
  * expression (object creation),
  * is found, <code>edit()</code> is called in <code>ExprEdit</code>.
  * <code>edit()</code> can inspect and modify the given expression.
@@ -268,8 +273,7 @@ public class ExprEditor {
                 context.updateMax(expr.locals(), expr.stack());
                 return true;
             }
-            else
-                return false;
+            return false;
         }
         catch (BadBytecode e) {
             throw new CannotCompileException(e);
@@ -309,10 +313,10 @@ public class ExprEditor {
     }
 
     /**
-     * Edits a <tt>new</tt> expression (overridable).
+     * Edits a <code>new</code> expression (overridable).
      * The default implementation performs nothing.
      *
-     * @param e         the <tt>new</tt> expression creating an object.
+     * @param e         the <code>new</code> expression creating an object.
      */
     public void edit(NewExpr e) throws CannotCompileException {}
 
@@ -320,7 +324,7 @@ public class ExprEditor {
      * Edits an expression for array creation (overridable).
      * The default implementation performs nothing.
      *
-     * @param a         the <tt>new</tt> expression for creating an array.
+     * @param a         the <code>new</code> expression for creating an array.
      * @throws CannotCompileException
      */
     public void edit(NewArray a) throws CannotCompileException {}

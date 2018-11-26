@@ -54,6 +54,9 @@ public class Keyword extends ASTree {
     
     public static final Keyword STRICT = new Keyword(TokenId.STRICT);
 
+    /** default serialVersionUID */
+    private static final long serialVersionUID = 1L;
+
     protected int tokenId;
 
     public Keyword(int token) {
@@ -62,7 +65,9 @@ public class Keyword extends ASTree {
 
     public int get() { return tokenId; }
 
+    @Override
     public String toString() { return "id:" + tokenId; }
 
+    @Override
     public void accept(Visitor v) throws CompileError { v.atKeyword(this); }
 }

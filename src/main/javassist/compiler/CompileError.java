@@ -21,6 +21,8 @@ import javassist.NoStackTraceException;
 import javassist.NotFoundException;
 
 public class CompileError extends NoStackTraceException {
+    /** default serialVersionUID */
+    private static final long serialVersionUID = 1L;
     private Lex lex;
     private String reason;
 
@@ -44,10 +46,12 @@ public class CompileError extends NoStackTraceException {
 
     public Lex getLex() { return lex; }
 
+    @Override
     public String getMessage() {
         return reason;
     }
 
+    @Override
     public String toString() {
         return "compile error: " + reason;
     }

@@ -6,7 +6,7 @@
 
 <project name="javassist" default="jar" basedir=".">
 
-  <property name="dist-version" value="javassist-3.22.0-CR1"/>
+  <property name="dist-version" value="javassist-3.24-GA"/>
 
   <property environment="env"/>
   <property name="target.jar" value="javassist.jar"/>
@@ -16,8 +16,9 @@
   <property name="build.dir" value="${basedir}/target"/>
   <property name="build.classes.dir" value="${build.dir}/classes"/>
   <property name="test.src.dir" value="${basedir}/src/test"/>
+  <property name="test.lib.dir" value="${test.src.dir}/resources"/>
   <property name="test.build.dir" value="${build.dir}/test-classes"/>
-  <property name="test.run.dir" value="${basedir}/runtest"/>
+  <property name="test.run.dir" value="${build.dir}/runtest"/>
   <property name="test.reports.dir" value = "${build.dir}/test-output"/>
 
   <property name="run.dir" value="${build.classes.dir}"/>
@@ -32,14 +33,17 @@
   <path id="test.compile.classpath">
     <pathelement location="${build.classes.dir}"/>
     <pathelement location="${lib.dir}/junit.jar"/>
+    <pathelement location="${lib.dir}/hamcrest.jar"/>
   </path>
 
   <property name="test.compile.classpath" refid="test.compile.classpath"/>
 
   <path id="test.classpath">
     <pathelement location="${test.build.dir}"/>
+    <pathelement location="${test.lib.dir}"/>
     <pathelement location="${lib.dir}/junit.jar"/>
-  	<pathelement location="${build.classes.dir}"/>
+    <pathelement location="${lib.dir}/hamcrest.jar"/>
+    <pathelement location="${build.classes.dir}"/>
   </path>
 
   <property name="test.classpath" refid="test.classpath"/>
@@ -70,13 +74,13 @@
     </javac>
   </target>
 
-  <target name="compile16" depends="prepare">
+  <target name="compile18" depends="prepare">
     <javac srcdir="${src.dir}"
            destdir="${build.classes.dir}"
            debug="on"
            deprecation="on"
-	       source="1.6"
-	       target="1.6"
+	       source="1.8"
+	       target="1.8"
            optimize="off"
     	   includeantruntime="true"
            includes="**">
@@ -98,15 +102,23 @@
   </target>
 
   <target name="runtest" depends="jar,test-compile">
+    <copy file="${test.lib.dir}/empty.jar"
+          tofile="${test.lib.dir}/emptyorig.jar"
+          preservelastmodified="true" />
     <junit fork="true" printsummary="true" dir="${test.run.dir}">
       <jvmarg value="-XX:-FailOverToOldVerifier"/>
       <classpath refid="test.classpath"/>
       <formatter type="xml" extension=".xml"/>
       <test name="javassist.JvstTest" outfile="TestLog" />
     </junit>
+    <move file="${test.lib.dir}/emptyorig.jar"
+          tofile="${test.lib.dir}/empty.jar" />
   </target>
 
   <target name="runtest9" depends="jar,test-compile">
+    <copy file="${test.lib.dir}/empty.jar"
+          tofile="${test.lib.dir}/emptyorig.jar"
+          preservelastmodified="true" />
     <junit fork="true" printsummary="true" dir="${test.run.dir}">
       <jvmarg line="--add-opens java.base/java.lang=ALL-UNNAMED" />
       <jvmarg value="-XX:-FailOverToOldVerifier"/>
@@ -114,6 +126,8 @@
       <formatter type="xml" extension=".xml"/>
       <test name="javassist.JvstTest" outfile="TestLog" />
     </junit>
+    <move file="${test.lib.dir}/emptyorig.jar"
+          tofile="${test.lib.dir}/empty.jar" />
   </target>
 
   <target name="sample" depends="compile">
@@ -167,7 +181,7 @@
 to ${build.classes.dir}.</echo>
   </target>
 
-  <target name="jar" depends="compile16">
+  <target name="jar" depends="compile18">
     <jar jarfile="${target.jar}" update="true" manifest="${src.dir}/META-INF/MANIFEST.MF">
       <fileset dir="${build.classes.dir}">
       	  <include name="**/*.class"/>
@@ -219,7 +233,6 @@ Copyright (C) 1999- Shigeru Chiba. All Rights Reserved.</i>]]></bottom>
 
   <target name="clean">
     <delete dir="html"/>
-    <delete dir="${test.run.dir}" />
     <delete dir="${build.dir}"/>
     <delete file="${target.jar}"/>
     <delete file="${dist-version}.zip"/>

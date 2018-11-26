@@ -23,11 +23,21 @@ import java.util.List;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.Iterator;
-
-import javassist.*;
-import javassist.bytecode.*;
-import javassist.compiler.ast.*;
 import javassist.util.JvmNamesCache;
+import javassist.ClassPool;
+import javassist.CtClass;
+import javassist.CtField;
+import javassist.Modifier;
+import javassist.NotFoundException;
+import javassist.bytecode.AccessFlag;
+import javassist.bytecode.ClassFile;
+import javassist.bytecode.Descriptor;
+import javassist.bytecode.MethodInfo;
+import javassist.compiler.ast.ASTList;
+import javassist.compiler.ast.ASTree;
+import javassist.compiler.ast.Declarator;
+import javassist.compiler.ast.Keyword;
+import javassist.compiler.ast.Symbol;
 
 /* Code generator methods depending on javassist.* classes.
  */
@@ -80,8 +90,7 @@ public class MemberResolver implements TokenId {
                     Method r = new Method(clazz, current, res);
                     if (res == YES)
                         return r;
-                    else
-                        maybe = r;
+                    maybe = r;
                 }
             }
 
@@ -89,8 +98,7 @@ public class MemberResolver implements TokenId {
                                 argClassNames, maybe != null);
         if (m != null)
             return m;
-        else
-            return maybe;
+        return maybe;
     }
 
     private Method lookupMethod(CtClass clazz, String methodName,
@@ -143,9 +151,8 @@ public class MemberResolver implements TokenId {
 
         try {
             CtClass[] ifs = clazz.getInterfaces();
-            int size = ifs.length;
-            for (int i = 0; i < size; ++i) {
-                Method r = lookupMethod(ifs[i], methodName,
+            for (CtClass intf:ifs) {
+                Method r = lookupMethod(intf, methodName,
                         argTypes, argDims, argClassNames,
                         onlyExact);
                 if (r != null)
@@ -448,10 +455,10 @@ public class MemberResolver implements TokenId {
         throws CompileError
     {
         if (orgName.indexOf('.') < 0) {
-            Iterator it = classPool.getImportedPackages();
+            Iterator<String> it = classPool.getImportedPackages();
             while (it.hasNext()) {
-                String pac = (String)it.next();
-                String fqName = pac + '.' + orgName;
+                String pac = it.next();
+                String fqName = pac.replaceAll("\\.$","") + "." + orgName;
                 try {
                     return classPool.get(fqName);
                 }

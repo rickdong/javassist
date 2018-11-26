@@ -9,9 +9,13 @@ import javassist.bytecode.AttributeInfo;
 import javassist.bytecode.ClassFile;
 import javassist.bytecode.ConstPool;
 import javassist.bytecode.InnerClassesAttribute;
+import javassist.bytecode.NestHostAttribute;
+import javassist.bytecode.NestMembersAttribute;
 import javassist.expr.ExprEditor;
+import javassist.expr.Handler;
 import javassist.expr.MethodCall;
 
+@SuppressWarnings({"rawtypes","unchecked","unused"})
 public class JvstTest5 extends JvstTestRoot {
     public JvstTest5(String name) {
         super(name);
@@ -219,7 +223,7 @@ public class JvstTest5 extends JvstTestRoot {
                 "}");
         System.out.println(src);
         badClass.addMethod(CtMethod.make(src, badClass));
-        Class clazzz = badClass.toClass();
+        Class clazzz = badClass.toClass(Class.forName("DefineClassCapability"));
         Object obj = clazzz.getConstructor().newInstance(); // <-- falls here
     }
 
@@ -343,7 +347,110 @@ public class JvstTest5 extends JvstTestRoot {
         assertEquals(Modifier.PUBLIC, ica4.accessFlags(i5));
     }
 
+    public void testInnerClassModifiers2() throws Exception {
+        CtClass cc = sloader.get("test5.InnerModifier2$Protected");
+        Class<?> ccc = Class.forName("test5.InnerModifier2$Protected");
+        assertEquals(cc.getModifiers(), ccc.getModifiers());
+        assertTrue(Modifier.isProtected(cc.getModifiers()));
+
+        cc = sloader.get("test5.InnerModifier2$Public");
+        ccc = Class.forName("test5.InnerModifier2$Public");
+        assertEquals(cc.getModifiers(), ccc.getModifiers());
+        assertTrue(Modifier.isPublic(cc.getModifiers()));
+
+        cc = sloader.get("test5.InnerModifier2$Private");
+        ccc = Class.forName("test5.InnerModifier2$Private");
+        assertEquals(cc.getModifiers(), ccc.getModifiers());
+        assertTrue(Modifier.isPrivate(cc.getModifiers()));
+
+        cc = sloader.get("test5.InnerModifier2$Package");
+        ccc = Class.forName("test5.InnerModifier2$Package");
+        assertEquals(cc.getModifiers(), ccc.getModifiers());
+        assertTrue(Modifier.isPackage(cc.getModifiers()));
+
+        cc = sloader.get("test5.InnerModifier2$ProtectedStatic");
+        ccc = Class.forName("test5.InnerModifier2$ProtectedStatic");
+        assertEquals(cc.getModifiers(), ccc.getModifiers());
+        assertTrue(Modifier.isProtected(cc.getModifiers()));
+        assertTrue(Modifier.isStatic(cc.getModifiers()));
+
+        cc = sloader.get("test5.InnerModifier2$PublicStatic");
+        ccc = Class.forName("test5.InnerModifier2$PublicStatic");
+        assertEquals(cc.getModifiers(), ccc.getModifiers());
+        assertTrue(Modifier.isPublic(cc.getModifiers()));
+        assertTrue(Modifier.isStatic(cc.getModifiers()));
+
+        cc = sloader.get("test5.InnerModifier2$PrivateStatic");
+        ccc = Class.forName("test5.InnerModifier2$PrivateStatic");
+        assertEquals(cc.getModifiers(), ccc.getModifiers());
+        assertTrue(Modifier.isPrivate(cc.getModifiers()));
+        assertTrue(Modifier.isStatic(cc.getModifiers()));
+
+        cc = sloader.get("test5.InnerModifier2$PackageStatic");
+        ccc = Class.forName("test5.InnerModifier2$PackageStatic");
+        assertEquals(cc.getModifiers(), ccc.getModifiers());
+        assertTrue(Modifier.isPackage(cc.getModifiers()));
+        assertTrue(Modifier.isStatic(cc.getModifiers()));
+    }
+
     private InnerClassesAttribute getInnerClassAttr(CtClass cc) {
         return (InnerClassesAttribute)cc.getClassFile2().getAttribute(InnerClassesAttribute.tag);
+    }
+
+    public void testVarArgsModifier() throws Exception {
+        CtClass cc = sloader.get("test5.VarArgsMethod");
+        assertTrue(Modifier.isVarArgs(cc.getDeclaredMethod("foo").getModifiers()));
+        assertFalse(Modifier.isVarArgs(cc.getDeclaredMethod("bar").getModifiers()));
+    }
+
+    public void testIssue155() throws Exception {
+        CtClass cc = sloader.get("test5.Issue155");
+        CtMethod testMethod = cc.getDeclaredMethod("foo");
+        testMethod.instrument(
+                new ExprEditor() {
+                    public void edit(Handler m)
+                            throws CannotCompileException {
+                        m.insertBefore("throw $1;");
+                    }
+                });
+
+        cc.writeFile();
+        Object obj = make(cc.getName());
+        assertEquals(1, invoke(obj, "test"));
+    }
+
+    public void testNestHostAttribute() throws Exception {
+        CtClass cc = sloader.get("test5.NestHost$Foo");
+        ClassFile cf = cc.getClassFile();
+        NestHostAttribute attr = (NestHostAttribute)cf.getAttribute(NestHostAttribute.tag);
+        assertEquals(test5.NestHost.class.getName(),
+                     cf.getConstPool().getClassInfo(attr.hostClassIndex()));
+    }
+
+    public void testNestMembersAttribute() throws Exception {
+        CtClass cc = sloader.get("test5.NestHost");
+        ClassFile cf = cc.getClassFile();
+        NestMembersAttribute attr = (NestMembersAttribute)cf.getAttribute(NestMembersAttribute.tag);
+        assertEquals(2, attr.numberOfClasses());
+        String[] names = new String[2];
+        for (int i = 0; i < 2; i++)
+            names[i] = cf.getConstPool().getClassInfo(attr.memberClass(i));
+        
+        assertFalse(names[0].equals(names[1]));
+        assertTrue(names[0].equals("test5.NestHost$Foo") || names[0].equals("test5.NestHost$Bar"));
+        assertTrue(names[1].equals("test5.NestHost$Foo") || names[1].equals("test5.NestHost$Bar"));
+    }
+
+    public void testNestMembersAttributeCopy() throws Exception {
+        CtClass cc = sloader.get("test5.NestHost2");
+        cc.getClassFile().compact();
+        cc.writeFile();
+        make(cc.getName());
+    }
+
+    public void testNestHostAttributeCopy() throws Exception {
+        CtClass cc = sloader.get("test5.NestHost2$Foo");
+        cc.getClassFile().compact();
+        cc.toClass(test5.DefineClassCapability.class);
     }
 }

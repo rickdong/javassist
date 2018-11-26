@@ -229,6 +229,7 @@ public class Frame {
         return changed;
     }
 
+    @Override
     public String toString() {
         StringBuilder buffer = new StringBuilder();
 

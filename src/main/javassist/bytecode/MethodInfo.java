@@ -128,7 +128,8 @@ public class MethodInfo extends AttributeObservable{
      * @see Descriptor
      */
     public MethodInfo(ConstPool cp, String methodname, MethodInfo src,
-            Map classnameMap) throws BadBytecode {
+            Map<String,String> classnameMap) throws BadBytecode
+    {
         this(cp);
         read(src, methodname, classnameMap);
     }
@@ -136,6 +137,7 @@ public class MethodInfo extends AttributeObservable{
     /**
      * Returns a string representation of the object.
      */
+    @Override
     public String toString() {
         return getName() + " " + getDescriptor();
     }
@@ -314,7 +316,7 @@ public class MethodInfo extends AttributeObservable{
      * @return a list of <code>AttributeInfo</code> objects.
      * @see AttributeInfo
      */
-    public Map getAttributes() {
+    public Map<String, AttributeInfo> getAttributes() {
         return attribute;
     }
 
@@ -522,8 +524,7 @@ public class MethodInfo extends AttributeObservable{
         }
     }
 
-    private void read(MethodInfo src, String methodname, Map classnames)
-            throws BadBytecode {
+    private void read(MethodInfo src, String methodname, Map<String,String> classnames) {
         ConstPool destCp = constPool;
         accessFlags = src.accessFlags;
         name = destCp.addUtf8Info(methodname);

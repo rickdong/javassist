@@ -1,10 +1,13 @@
 package javassist;
 
+import org.junit.Ignore;
+
 import javassist.bytecode.*;
 import javassist.bytecode.annotation.*;
 import javassist.expr.*;
 import test3.*;
 
+@SuppressWarnings({"rawtypes","unchecked","unused"})
 public class JvstTest3 extends JvstTestRoot {
     public JvstTest3(String name) {
          super(name);
@@ -339,7 +342,7 @@ public class JvstTest3 extends JvstTestRoot {
         System.out.println("Num Annotation : " +ans.length);
 
         // c.debugWriteFile();
-        Class newclass = c.toClass();
+        Class newclass = c.toClass(DefineClassCapability.class);
         java.lang.annotation.Annotation[] anns = newclass.getAnnotations();
         System.out.println("Num NewClass Annotation : " +anns.length);
         assertEquals(ans.length, anns.length);
@@ -688,13 +691,19 @@ public class JvstTest3 extends JvstTestRoot {
     /* Check the result of JvstTest#testFieldInit()
      * This tests CtClassType#saveClassFile().
      */
-    public void testFieldInitAgain() throws Exception {
-        System.gc();
-        CtClass cc = sloader.get("test1.FieldInit");
-        CtField f = cc.getDeclaredField("f1");
-        assertEquals(CtClass.intType, f.getType());
-        assertTrue("f.hashCode() doesn't change!", f.hashCode() != JvstTest.testFieldInitHash);
-    }
+    
+    /*
+     * rdong: disabling this test for now, as classfile members
+     * are now cached using soft reference instead of weak reference,
+     * a gc call here doesn't necessarily clear the cache
+     */
+//    public void testFieldInitAgain() throws Exception {
+//        System.gc();
+//        CtClass cc = sloader.get("test1.FieldInit");
+//        CtField f = cc.getDeclaredField("f1");
+//        assertEquals(CtClass.intType, f.getType());
+//        assertTrue("f.hashCode() doesn't change!", f.hashCode() != JvstTest.testFieldInitHash);
+//    }
 
     /* This tests CtClassType#saveClassFile().
      * A CtMethod is not garbage collected, its CtClass is never
@@ -736,7 +745,7 @@ public class JvstTest3 extends JvstTestRoot {
         CtMethod m2 = cc2.getDeclaredMethod("getX");
         copyAnnotations(m1, m2);
         cc2.getClassFile();
-        Class clazz = cc2.toClass();
+        Class clazz = cc2.toClass(DefineClassCapability.class);
         java.lang.reflect.Method m = clazz.getDeclaredMethod("getX", new Class[0]);
         assertEquals(1, m.getAnnotations().length);
         test3.VisibleAnno a = m.getAnnotation(test3.VisibleAnno.class);
@@ -789,7 +798,7 @@ public class JvstTest3 extends JvstTestRoot {
         cc.addField(fobj, CtField.Initializer.constant("bar"));
 
         cc.writeFile();
-        Class clazz = cc.toClass();
+        Class clazz = cc.toClass(DefineClassCapability.class);
         assertEquals(2L, clazz.getField("j").getLong(null));
         assertEquals(3, clazz.getField("i").getInt(null));
         assertEquals(4, clazz.getField("s").getShort(null));
@@ -1107,7 +1116,7 @@ public class JvstTest3 extends JvstTestRoot {
         sb.append("}"); 
         ctc.addMethod(CtNewMethod.make(sb.toString(), ctc));
         ctc.debugWriteFile();
-        ctc.toClass().getConstructor().newInstance();
+        ctc.toClass(DefineClassCapability.class).getConstructor().newInstance();
     }
 
     // JIRA-83

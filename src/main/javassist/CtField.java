@@ -18,13 +18,21 @@ package javassist;
 
 import java.util.Iterator;
 
-import javassist.bytecode.*;
+import javassist.bytecode.AccessFlag;
+import javassist.bytecode.AnnotationsAttribute;
+import javassist.bytecode.AttributeInfo;
+import javassist.bytecode.Bytecode;
+import javassist.bytecode.ClassFile;
+import javassist.bytecode.ConstPool;
+import javassist.bytecode.Descriptor;
+import javassist.bytecode.FieldInfo;
+import javassist.bytecode.SignatureAttribute;
+import javassist.compiler.CompileError;
 import javassist.compiler.Javac;
 import javassist.compiler.SymbolTable;
-import javassist.compiler.CompileError;
 import javassist.compiler.ast.ASTree;
-import javassist.compiler.ast.IntConst;
 import javassist.compiler.ast.DoubleConst;
+import javassist.compiler.ast.IntConst;
 import javassist.compiler.ast.StringL;
 
 /**
@@ -116,11 +124,13 @@ public class CtField extends CtMember {
     /**
      * Returns a String representation of the object.
      */
+    @Override
     public String toString() {
         return getDeclaringClass().getName() + "." + getName()
                + ":" + fieldInfo.getDescriptor();
     }
 
+    @Override
     protected void extendToString(StringBuilder buffer) {
         buffer.append(' ');
         buffer.append(getName());
@@ -128,18 +138,15 @@ public class CtField extends CtMember {
         buffer.append(fieldInfo.getDescriptor());
     }
 
-    /* Javac.CtFieldWithInit overrides.
-     */
+    /* Javac.CtFieldWithInit overrides. */
     protected ASTree getInitAST() { return null; }
 
-    /* Called by CtClassType.addField().
-     */
+    /* Called by CtClassType.addField(). */
     Initializer getInit() {
         ASTree tree = getInitAST();
         if (tree == null)
             return null;
-        else
-            return Initializer.byExpr(tree);
+        return Initializer.byExpr(tree);
     }
 
     /**
@@ -204,6 +211,7 @@ public class CtField extends CtMember {
     /**
      * Returns the class declaring the field.
      */
+    @Override
     public CtClass getDeclaringClass() {
         // this is redundant but for javadoc.
         return super.getDeclaringClass();
@@ -212,6 +220,7 @@ public class CtField extends CtMember {
     /**
      * Returns the name of the field.
      */
+    @Override
     public String getName() {
         return fieldInfo.getName();
     }
@@ -229,6 +238,7 @@ public class CtField extends CtMember {
      *
      * @see Modifier
      */
+    @Override
     public int getModifiers() {
         return AccessFlag.toModifier(fieldInfo.getAccessFlags());
     }
@@ -238,6 +248,7 @@ public class CtField extends CtMember {
      *
      * @see Modifier
      */
+    @Override
     public void setModifiers(int mod) {
         declaringClass.checkModify();
         fieldInfo.setAccessFlags(AccessFlag.of(mod));
@@ -250,6 +261,7 @@ public class CtField extends CtMember {
      * @return <code>true</code> if the annotation is found, otherwise <code>false</code>.
      * @since 3.21
      */
+    @Override
     public boolean hasAnnotation(String typeName) {
         FieldInfo fi = getFieldInfo2();
         AnnotationsAttribute ainfo = (AnnotationsAttribute)
@@ -271,7 +283,8 @@ public class CtField extends CtMember {
      * @return the annotation if found, otherwise <code>null</code>.
      * @since 3.11
      */
-    public Object getAnnotation(Class clz) throws ClassNotFoundException {
+    @Override
+    public Object getAnnotation(Class<?> clz) throws ClassNotFoundException {
         FieldInfo fi = getFieldInfo2();
         AnnotationsAttribute ainfo = (AnnotationsAttribute)
                     fi.getAttribute(AnnotationsAttribute.invisibleTag);  
@@ -288,6 +301,7 @@ public class CtField extends CtMember {
      * @see #getAvailableAnnotations()
      * @since 3.1
      */
+    @Override
     public Object[] getAnnotations() throws ClassNotFoundException {
         return getAnnotations(false);
     }
@@ -301,6 +315,7 @@ public class CtField extends CtMember {
      * @see #getAnnotations()
      * @since 3.3
      */
+    @Override
     public Object[] getAvailableAnnotations(){
         try {
             return getAnnotations(true);
@@ -334,6 +349,7 @@ public class CtField extends CtMember {
      * @see javassist.bytecode.Descriptor
      * @see #getGenericSignature()
      */
+    @Override
     public String getSignature() {
         return fieldInfo.getDescriptor();
     }
@@ -345,6 +361,7 @@ public class CtField extends CtMember {
      * @see SignatureAttribute#toFieldSignature(String)
      * @since 3.17
      */
+    @Override
     public String getGenericSignature() {
         SignatureAttribute sa
             = (SignatureAttribute)fieldInfo.getAttribute(SignatureAttribute.tag);
@@ -361,6 +378,7 @@ public class CtField extends CtMember {
      * @see javassist.bytecode.SignatureAttribute.ObjectType#encode()
      * @since 3.17
      */
+    @Override
     public void setGenericSignature(String sig) {
         declaringClass.checkModify();
         fieldInfo.addAttribute(new SignatureAttribute(fieldInfo.getConstPool(), sig));
@@ -428,8 +446,7 @@ public class CtField extends CtMember {
                 // "Z" means boolean type.
                 if ("Z".equals(fieldInfo.getDescriptor()))
                     return Boolean.valueOf(value != 0);
-                else
-                    return Integer.valueOf(value);
+                return Integer.valueOf(value);
             case ConstPool.CONST_String :
                 return cp.getStringInfo(index);
             default :
@@ -449,12 +466,12 @@ public class CtField extends CtMember {
      *
      * @param name              attribute name
      */
+    @Override
     public byte[] getAttribute(String name) {
         AttributeInfo ai = fieldInfo.getAttribute(name);
         if (ai == null)
             return null;
-        else
-            return ai.get();
+        return ai.get();
     }
 
     /**
@@ -467,6 +484,7 @@ public class CtField extends CtMember {
      * @param name      attribute name
      * @param data      attribute value
      */
+    @Override
     public void setAttribute(String name, byte[] data) {
         declaringClass.checkModify();
         fieldInfo.addAttribute(new AttributeInfo(fieldInfo.getConstPool(),
@@ -856,6 +874,7 @@ public class CtField extends CtMember {
     static abstract class CodeInitializer0 extends Initializer {
         abstract void compileExpr(Javac drv) throws CompileError;
 
+        @Override
         int compile(CtClass type, String name, Bytecode code,
                     CtClass[] parameters, Javac drv)
             throws CannotCompileException
@@ -871,6 +890,7 @@ public class CtField extends CtMember {
             }
         }
 
+        @Override
         int compileIfStatic(CtClass type, String name, Bytecode code,
                             Javac drv) throws CannotCompileException
         {
@@ -889,9 +909,9 @@ public class CtField extends CtMember {
                 if (tree instanceof IntConst) {
                     long value = ((IntConst)tree).get();
                     if (type == CtClass.doubleType)
-                        return cp.addDoubleInfo((double)value);
+                        return cp.addDoubleInfo(value);
                     else if (type == CtClass.floatType)
-                        return cp.addFloatInfo((float)value);
+                        return cp.addFloatInfo(value);
                     else if (type == CtClass.longType)
                         return cp.addLongInfo(value);
                     else  if (type != CtClass.voidType)
@@ -918,10 +938,12 @@ public class CtField extends CtMember {
 
         CodeInitializer(String expr) { expression = expr; }
 
+        @Override
         void compileExpr(Javac drv) throws CompileError {
             drv.compileExpr(expression);
         }
 
+        @Override
         int getConstantValue(ConstPool cp, CtClass type) {
             try {
                 ASTree t = Javac.parseExpr(expression, new SymbolTable());
@@ -938,10 +960,12 @@ public class CtField extends CtMember {
 
         PtreeInitializer(ASTree expr) { expression = expr; }
 
+        @Override
         void compileExpr(Javac drv) throws CompileError {
             drv.compileExpr(expression);
         }
 
+        @Override
         int getConstantValue(ConstPool cp, CtClass type) {
             return getConstantValue2(cp, type, expression);
         }
@@ -956,6 +980,7 @@ public class CtField extends CtMember {
 
         ParamInitializer() {}
 
+        @Override
         int compile(CtClass type, String name, Bytecode code,
                     CtClass[] parameters, Javac drv)
             throws CannotCompileException
@@ -967,8 +992,7 @@ public class CtField extends CtMember {
                 code.addPutfield(Bytecode.THIS, name, Descriptor.of(type));
                 return s;       // stack size
             }
-            else
-                return 0;       // do not initialize
+            return 0;       // do not initialize
         }
 
         /**
@@ -1000,6 +1024,7 @@ public class CtField extends CtMember {
             return k;
         }
 
+        @Override
         int compileIfStatic(CtClass type, String name, Bytecode code,
                             Javac drv) throws CannotCompileException
         {
@@ -1021,6 +1046,7 @@ public class CtField extends CtMember {
          * Produces codes in which a new object is created and assigned to
          * the field as the initial value.
          */
+        @Override
         int compile(CtClass type, String name, Bytecode code,
                     CtClass[] parameters, Javac drv)
             throws CannotCompileException
@@ -1055,16 +1081,17 @@ public class CtField extends CtMember {
                     return "(Ljava/lang/Object;[Ljava/lang/Object;)V";
                 else
                     return "(Ljava/lang/Object;)V";
-            else
-                if (withConstructorParams)
-                    return desc3;
-                else
-                    return "(Ljava/lang/Object;[Ljava/lang/String;)V";
+
+            if (withConstructorParams)
+                return desc3;
+
+            return "(Ljava/lang/Object;[Ljava/lang/String;)V";
         }
 
         /**
          * Produces codes for a static field.
          */
+        @Override
         int compileIfStatic(CtClass type, String name, Bytecode code,
                             Javac drv) throws CannotCompileException
         {
@@ -1117,6 +1144,7 @@ public class CtField extends CtMember {
          * Produces codes in which a new object is created and assigned to
          * the field as the initial value.
          */
+        @Override
         int compile(CtClass type, String name, Bytecode code,
                     CtClass[] parameters, Javac drv)
             throws CannotCompileException
@@ -1151,16 +1179,17 @@ public class CtField extends CtMember {
                     return "(Ljava/lang/Object;[Ljava/lang/Object;)";
                 else
                     return "(Ljava/lang/Object;)";
-            else
-                if (withConstructorParams)
-                    return desc3;
-                else
-                    return "(Ljava/lang/Object;[Ljava/lang/String;)";
+
+            if (withConstructorParams)
+                return desc3;
+
+            return "(Ljava/lang/Object;[Ljava/lang/String;)";
         }
 
         /**
          * Produces codes for a static field.
          */
+        @Override
         int compileIfStatic(CtClass type, String name, Bytecode code,
                             Javac drv) throws CannotCompileException
         {
@@ -1186,12 +1215,14 @@ public class CtField extends CtMember {
 
         IntInitializer(int v) { value = v; }
 
+        @Override
         void check(String desc) throws CannotCompileException {
             char c = desc.charAt(0);
             if (c != 'I' && c != 'S' && c != 'B' && c != 'C' && c != 'Z')
                 throw new CannotCompileException("type mismatch");
         }
 
+        @Override
         int compile(CtClass type, String name, Bytecode code,
                     CtClass[] parameters, Javac drv)
             throws CannotCompileException
@@ -1202,6 +1233,7 @@ public class CtField extends CtMember {
             return 2;   // stack size
         }
 
+        @Override
         int compileIfStatic(CtClass type, String name, Bytecode code,
                             Javac drv) throws CannotCompileException
         {
@@ -1210,6 +1242,7 @@ public class CtField extends CtMember {
             return 1;   // stack size
         }
 
+        @Override
         int getConstantValue(ConstPool cp, CtClass type) {
             return cp.addIntegerInfo(value);
         }
@@ -1220,11 +1253,13 @@ public class CtField extends CtMember {
 
         LongInitializer(long v) { value = v; }
 
+        @Override
         void check(String desc) throws CannotCompileException {
             if (!desc.equals("J"))
                 throw new CannotCompileException("type mismatch");
         }
 
+        @Override
         int compile(CtClass type, String name, Bytecode code,
                     CtClass[] parameters, Javac drv)
             throws CannotCompileException
@@ -1235,6 +1270,7 @@ public class CtField extends CtMember {
             return 3;   // stack size
         }
 
+        @Override
         int compileIfStatic(CtClass type, String name, Bytecode code,
                             Javac drv) throws CannotCompileException
         {
@@ -1243,11 +1279,11 @@ public class CtField extends CtMember {
             return 2;   // stack size
         }
 
+        @Override
         int getConstantValue(ConstPool cp, CtClass type) {
             if (type == CtClass.longType)
                 return cp.addLongInfo(value);
-            else
-                return 0;
+            return 0;
         }
     }
 
@@ -1256,11 +1292,13 @@ public class CtField extends CtMember {
 
         FloatInitializer(float v) { value = v; }
 
+        @Override
         void check(String desc) throws CannotCompileException {
             if (!desc.equals("F"))
                 throw new CannotCompileException("type mismatch");
         }
 
+        @Override
         int compile(CtClass type, String name, Bytecode code,
                     CtClass[] parameters, Javac drv)
             throws CannotCompileException
@@ -1271,6 +1309,7 @@ public class CtField extends CtMember {
             return 3;   // stack size
         }
 
+        @Override
         int compileIfStatic(CtClass type, String name, Bytecode code,
                             Javac drv) throws CannotCompileException
         {
@@ -1279,11 +1318,11 @@ public class CtField extends CtMember {
             return 2;   // stack size
         }
 
+        @Override
         int getConstantValue(ConstPool cp, CtClass type) {
             if (type == CtClass.floatType)
                 return cp.addFloatInfo(value);
-            else
-                return 0;
+            return 0;
         }
     }
 
@@ -1292,11 +1331,13 @@ public class CtField extends CtMember {
 
         DoubleInitializer(double v) { value = v; }
 
+        @Override
         void check(String desc) throws CannotCompileException {
             if (!desc.equals("D"))
                 throw new CannotCompileException("type mismatch");
         }
 
+        @Override
         int compile(CtClass type, String name, Bytecode code,
                     CtClass[] parameters, Javac drv)
             throws CannotCompileException
@@ -1307,6 +1348,7 @@ public class CtField extends CtMember {
             return 3;   // stack size
         }
 
+        @Override
         int compileIfStatic(CtClass type, String name, Bytecode code,
                             Javac drv) throws CannotCompileException
         {
@@ -1315,11 +1357,11 @@ public class CtField extends CtMember {
             return 2;   // stack size
         }
 
+        @Override
         int getConstantValue(ConstPool cp, CtClass type) {
             if (type == CtClass.doubleType)
                 return cp.addDoubleInfo(value);
-            else
-                return 0;
+            return 0;
         }
     }
 
@@ -1328,6 +1370,7 @@ public class CtField extends CtMember {
 
         StringInitializer(String v) { value = v; }
 
+        @Override
         int compile(CtClass type, String name, Bytecode code,
                     CtClass[] parameters, Javac drv)
             throws CannotCompileException
@@ -1338,6 +1381,7 @@ public class CtField extends CtMember {
             return 2;   // stack size
         }
 
+        @Override
         int compileIfStatic(CtClass type, String name, Bytecode code,
                             Javac drv) throws CannotCompileException
         {
@@ -1346,11 +1390,11 @@ public class CtField extends CtMember {
             return 1;   // stack size
         }
 
+        @Override
         int getConstantValue(ConstPool cp, CtClass type) {
             if (type.getName().equals(javaLangString))
                 return cp.addStringInfo(value);
-            else
-                return 0;
+            return 0;
         }
     }
 
@@ -1368,6 +1412,7 @@ public class CtField extends CtMember {
                 code.addAnewarray(type, size);
         }
 
+        @Override
         int compile(CtClass type, String name, Bytecode code,
                     CtClass[] parameters, Javac drv)
             throws CannotCompileException
@@ -1378,6 +1423,7 @@ public class CtField extends CtMember {
             return 2;   // stack size
         }
 
+        @Override
         int compileIfStatic(CtClass type, String name, Bytecode code,
                             Javac drv) throws CannotCompileException
         {
@@ -1393,11 +1439,13 @@ public class CtField extends CtMember {
 
         MultiArrayInitializer(CtClass t, int[] d) { type = t; dim = d; }
 
+        @Override
         void check(String desc) throws CannotCompileException {
             if (desc.charAt(0) != '[')
                 throw new CannotCompileException("type mismatch");
         }
 
+        @Override
         int compile(CtClass type, String name, Bytecode code,
                     CtClass[] parameters, Javac drv)
             throws CannotCompileException
@@ -1408,6 +1456,7 @@ public class CtField extends CtMember {
             return s + 1;       // stack size
         }
 
+        @Override
         int compileIfStatic(CtClass type, String name, Bytecode code,
                             Javac drv) throws CannotCompileException
         {

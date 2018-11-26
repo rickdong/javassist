@@ -19,9 +19,6 @@ package javassist.bytecode;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -46,7 +43,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
     private int maxStack;
     private int maxLocals;
     private ExceptionTable exceptions;
-    private Map attributes;
+    private Map<String, AttributeInfo> attributes;
 
     /**
      * Constructs a <code>Code_attribute</code>.
@@ -65,7 +62,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
         maxLocals = locals;
         info = code;
         exceptions = etable;
-        attributes = new LinkedHashMap();
+        attributes = new LinkedHashMap<>();
     }
 
     /**
@@ -77,7 +74,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
      * @param classnames        pairs of replaced and substituted
      *                          class names.
      */
-    private CodeAttribute(ConstPool cp, CodeAttribute src, Map classnames)
+    private CodeAttribute(ConstPool cp, CodeAttribute src, Map<String,String> classnames)
         throws BadBytecode
     {
         super(cp, tag);
@@ -85,7 +82,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
         maxStack = src.getMaxStack();
         maxLocals = src.getMaxLocals();
         exceptions = src.getExceptionTable().copy(cp, classnames);
-        attributes = new LinkedHashMap();
+        attributes = new LinkedHashMap<>();
         Map src_attr = src.getAttributes();
         for (Object o : src_attr.values()) {
             AttributeInfo ai = (AttributeInfo)o;
@@ -100,6 +97,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
         throws IOException
     {
         super(cp, name_id, (byte[])null);
+        @SuppressWarnings("unused")
         int attr_len = in.readInt();
 
         maxStack = in.readUnsignedShort();
@@ -111,7 +109,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
 
         exceptions = new ExceptionTable(cp, in);
 
-        attributes = new LinkedHashMap();
+        attributes = new LinkedHashMap<>();
         int num = in.readUnsignedShort();
         for (int i = 0; i < num; ++i){
         	AttributeInfo c = AttributeInfo.read(cp, in);
@@ -133,7 +131,8 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
      *
      * @return <code>CodeAttribute</code> object.
      */
-    public AttributeInfo copy(ConstPool newCp, Map classnames)
+    @Override
+    public AttributeInfo copy(ConstPool newCp, Map<String,String> classnames)
         throws RuntimeCopyException
     {
         try {
@@ -149,6 +148,9 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
      * in <code>CodeAttribute</code>.
      */
     public static class RuntimeCopyException extends RuntimeException {
+        /** default serialVersionUID */
+        private static final long serialVersionUID = 1L;
+
         /**
          * Constructs an exception.
          */
@@ -162,11 +164,13 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
      * structure.
      * The returned value is <code>attribute_length + 6</code>.
      */
+    @Override
     public int length() {
         return 18 + info.length + exceptions.size() * 8
                + AttributeInfo.getLength(attributes);
     }
 
+    @Override
     void write(DataOutputStream out) throws IOException {
         out.writeShort(name);           // attribute_name_index
         out.writeInt(length() - 6);     // attribute_length
@@ -184,7 +188,8 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
      *
      * @throws java.lang.UnsupportedOperationException  always thrown.
      */
-    public byte[] get() { 
+    @Override
+    public byte[] get() {
         throw new UnsupportedOperationException("CodeAttribute.get()");
     }
 
@@ -193,19 +198,23 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
      *
      * @throws java.lang.UnsupportedOperationException  always thrown.
      */
+    @Override
     public void set(byte[] newinfo) {
         throw new UnsupportedOperationException("CodeAttribute.set()");
     }
 
+    @Override
     void renameClass(String oldname, String newname) {
         AttributeInfo.renameClass(attributes, oldname, newname);
     }
 
-    void renameClass(Map classnames) {
+    @Override
+    void renameClass(Map<String,String> classnames) {
         AttributeInfo.renameClass(attributes, classnames);
     }
 
-    void getRefClasses(Map classnames) {
+    @Override
+    void getRefClasses(Map<String,String> classnames) {
         AttributeInfo.getRefClasses(attributes, classnames);
     }
 
@@ -297,7 +306,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
      *
      * @see AttributeInfo
      */
-    public Map getAttributes() { return attributes; }
+    public Map<String, AttributeInfo> getAttributes() { return attributes; }
 
     /**
      * Returns the attribute with the specified name.
@@ -344,7 +353,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
     /**
      * Copies code.
      */
-    private byte[] copyCode(ConstPool destCp, Map classnames,
+    private byte[] copyCode(ConstPool destCp, Map<String,String> classnames,
                             ExceptionTable etable, CodeAttribute destCa)
         throws BadBytecode
     {
@@ -358,7 +367,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
 
     private static LdcEntry copyCode(byte[] code, int beginPos, int endPos,
                                      ConstPool srcCp, byte[] newcode,
-                                     ConstPool destCp, Map classnameMap)
+                                     ConstPool destCp, Map<String,String> classnameMap)
         throws BadBytecode
     {
         int i2, index;
@@ -430,7 +439,7 @@ public class CodeAttribute extends AttributeInfo implements Opcode {
 
     private static void copyConstPoolInfo(int i, byte[] code, ConstPool srcCp,
                                           byte[] newcode, ConstPool destCp,
-                                          Map classnameMap) {
+                                          Map<String,String> classnameMap) {
         int index = ((code[i] & 0xff) << 8) | (code[i + 1] & 0xff);
         index = srcCp.copy(index, destCp, classnameMap);
         newcode[i] = (byte)(index >> 8);

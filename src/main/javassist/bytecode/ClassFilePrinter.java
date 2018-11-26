@@ -24,6 +24,7 @@ import javassist.bytecode.ClassFile.MethodInfoCallback;
 import java.util.List;
 import java.util.Map;
 
+
 /**
  * A utility class for priting the contents of a class file.
  * It prints a constant pool table, fields, and methods in a
@@ -93,13 +94,11 @@ public class ClassFilePrinter {
         printAttributes(cf.getAttributes(), out, 'c');
     }
 
-    static void printAttributes(Map list, PrintWriter out, char kind) {
+    static void printAttributes(Map<String, AttributeInfo> list, PrintWriter out, char kind) {
         if (list == null)
             return;
 
-        int n = list.size();
-        for (int i = 0; i < n; ++i) {
-            AttributeInfo ai = (AttributeInfo)list.get(i);
+        for (AttributeInfo ai:list.values()) {
             if (ai instanceof CodeAttribute) {
                 CodeAttribute ca = (CodeAttribute)ai;
                 out.println("attribute: " + ai.getName() + ": "

@@ -42,20 +42,33 @@ public abstract class CtMember {
      * at the same time.
      */
     static class Cache extends CtMember implements AttributeChangeListener {
+        @Override
         protected void extendToString(StringBuilder buffer) {}
+        @Override
         public boolean hasAnnotation(String clz) { return false; }
-        public Object getAnnotation(Class clz)
+        @Override
+        public Object getAnnotation(Class<?> clz)
             throws ClassNotFoundException { return null; }
+        @Override
         public Object[] getAnnotations()
             throws ClassNotFoundException { return null; }
+        @Override
         public byte[] getAttribute(String name) { return null; }
+        @Override
         public Object[] getAvailableAnnotations() { return null; }
+        @Override
         public int getModifiers() { return 0; }
+        @Override
         public String getName() { return null; }
+        @Override
         public String getSignature() { return null; }
+        @Override
         public void setAttribute(String name, byte[] data) {}
+        @Override
         public void setModifiers(int mod) {}
+        @Override
         public String getGenericSignature() { return null; }
+        @Override
         public void setGenericSignature(String sig) {}
 
         private final List<CtConstructor> cons = new ArrayList<>();
@@ -305,6 +318,7 @@ public abstract class CtMember {
      */
     void nameReplaced() {}
 
+    @Override
     public String toString() {
         StringBuilder buffer = new StringBuilder(getClass().getName());
         buffer.append("@");
@@ -378,7 +392,7 @@ public abstract class CtMember {
      * @return <code>true</code> if the annotation is found, otherwise <code>false</code>.
      * @since 3.11
      */
-    public boolean hasAnnotation(Class clz) {
+    public boolean hasAnnotation(Class<?> clz) {
         return hasAnnotation(clz.getName());
     }
 
@@ -402,7 +416,7 @@ public abstract class CtMember {
      * @return the annotation if found, otherwise <code>null</code>.
      * @since 3.11
      */
-    public abstract Object getAnnotation(Class annotationType) throws ClassNotFoundException;
+    public abstract Object getAnnotation(Class<?> annotationType) throws ClassNotFoundException;
 
     /**
      * Returns the annotations associated with this member.
