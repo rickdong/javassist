@@ -17,6 +17,8 @@
 package javassist.bytecode.analysis;
 
 import java.util.ArrayList;
+import java.util.List;
+
 import javassist.CtClass;
 import javassist.CtMethod;
 import javassist.bytecode.BadBytecode;
@@ -64,13 +66,17 @@ public class ControlFlow {
         methodInfo = minfo;
         frames = null;
         basicBlocks = (Block[])new BasicBlock.Maker() {
+            @Override
             protected BasicBlock makeBlock(int pos) {
                 return new Block(pos, methodInfo);
             }
+            @Override
             protected BasicBlock[] makeArray(int size) {
                 return new Block[size];
             }
         }.make(minfo);
+        if (basicBlocks == null)
+            basicBlocks = new Block[0];
         int size = basicBlocks.length;
         int[] counters = new int[size];
         for (int i = 0; i < size; i++) {
@@ -97,6 +103,9 @@ public class ControlFlow {
 
     /**
      * Returns all the basic blocks in the method body.
+     *
+     * @return an array of basic blocks, the array has length 0 if
+     * the method doesn't have code.
      */
     public Block[] basicBlocks() {
         return basicBlocks;
@@ -133,7 +142,7 @@ public class ControlFlow {
      * For every array element <code>node</code>, its index in the
      * array is equivalent to <code>node.block().index()</code>. 
      *
-     * @return an array of the tree nodes, or null if the method is abstract.
+     * @return an array of the tree nodes, or null if the method doesn't have code.
      * @see Node#block()
      * @see Block#index()
      */
@@ -151,7 +160,9 @@ public class ControlFlow {
         }
 
         Access access = new Access(nodes) {
+            @Override
             BasicBlock[] exits(Node n) { return n.block.getExit(); }
+            @Override
             BasicBlock[] entrances(Node n) { return n.block.entrances; }
         };
         nodes[0].makeDepth1stTree(null, visited, 0, distance, access);
@@ -179,7 +190,7 @@ public class ControlFlow {
      * For every array element <code>node</code>, its index in the
      * array is equivalent to <code>node.block().index()</code>.
      *
-     * @return an array of the tree nodes, or null if the method is abstract.
+     * @return an array of the tree nodes, or null if the method doesn't have code.
      * @see Node#block()
      * @see Block#index()
      */
@@ -197,7 +208,9 @@ public class ControlFlow {
         }
 
         Access access = new Access(nodes) {
+            @Override
             BasicBlock[] exits(Node n) { return n.block.entrances; }
+            @Override
             BasicBlock[] entrances(Node n) { return n.block.getExit(); }
         };
 
@@ -247,6 +260,7 @@ public class ControlFlow {
             method = minfo;
         }
 
+        @Override
         protected void toString2(StringBuffer sbuf) {
             super.toString2(sbuf);
             sbuf.append(", incoming{");
@@ -309,14 +323,14 @@ public class ControlFlow {
          * in this block. 
          */
         public Catcher[] catchers() {
-            ArrayList catchers = new ArrayList();
+            List<Catcher> catchers = new ArrayList<Catcher>();
             BasicBlock.Catch c = toCatch;
             while (c != null) {
                 catchers.add(new Catcher(c));
                 c = c.next;
             }
 
-            return (Catcher[])catchers.toArray(new Catcher[catchers.size()]);
+            return catchers.toArray(new Catcher[catchers.size()]);
         }
     }
 
@@ -344,6 +358,7 @@ public class ControlFlow {
         /**
          * Returns a <code>String</code> representation.
          */
+        @Override
         public String toString() {
             StringBuffer sbuf = new StringBuffer();
             sbuf.append("Node[pos=").append(block().position());
@@ -468,7 +483,7 @@ public class ControlFlow {
                 Node n = all[i];
                 Node p = n.parent;
                 if (p != null)
-                    p.children[nchildren[p.block.index]++] = n;            
+                    p.children[nchildren[p.block.index]++] = n;
             }
         }
     }

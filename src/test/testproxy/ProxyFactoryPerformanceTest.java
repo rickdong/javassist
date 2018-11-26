@@ -17,6 +17,7 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
 
+@SuppressWarnings({"rawtypes","unchecked", "unused"})
 public class ProxyFactoryPerformanceTest extends TestCase {
 
 	public static final int COUNT = 100; 
@@ -45,7 +46,7 @@ public class ProxyFactoryPerformanceTest extends TestCase {
         error = null;
 		Thread[] threads = new Thread[MAX_THREADS];
 		for (int i = 0; i < threads.length; ++i) {
-			threads[i] = (Thread)cl.newInstance();
+			threads[i] = (Thread)cl.getDeclaredConstructor().newInstance();
 		}
 		long time = System.currentTimeMillis();
 		for (int i = 0; i < threads.length; ++i) {
@@ -84,6 +85,7 @@ public class ProxyFactoryPerformanceTest extends TestCase {
 	}
 }
 
+@SuppressWarnings({"rawtypes","unused"})
 class ProxyMaker extends Thread implements MethodHandler {
 	private static final MethodFilter FINALIZE_FILTER = new MethodFilter() {
 		public boolean isHandled(Method m) {
@@ -104,7 +106,7 @@ class ProxyMaker extends Thread implements MethodHandler {
 			factory.setSuperclass(SampleBean.class);
 			factory.setInterfaces(SampleBean.class.getInterfaces());
 			factory.setFilter(FINALIZE_FILTER);
-			factory.setHandler(this);
+			// factory.setHandler(this);
 
 			Class proxyClass = factory.createClass();
 			//System.out.println("proxy name: " + proxyClass.getName());
@@ -163,6 +165,9 @@ class EnhancerUser extends Thread implements InvocationHandler {
 */
 
 class SampleBean implements Serializable {
+    /** default serialVersionUID */
+    private static final long serialVersionUID = 1L;
+
     long oid;
     
     int version;

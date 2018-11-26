@@ -38,12 +38,16 @@ import java.net.URL;
  * <code>ClassClassPath</code> uses a class object representing
  * the class including the code snippet above.
  *
+ * <p>Class files in a named module are private to that module.
+ * This method cannot obtain class files in named modules.
+ * </p>
+ *
  * @see ClassPool#insertClassPath(ClassPath)
  * @see ClassPool#appendClassPath(ClassPath)
  * @see LoaderClassPath
  */
 public class ClassClassPath implements ClassPath {
-    private Class thisClass;
+    private Class<?> thisClass;
 
     /** Creates a search path.
      *
@@ -51,7 +55,7 @@ public class ClassClassPath implements ClassPath {
      *              file.  <code>getResourceAsStream()</code> is called on
      *              this object.
      */
-    public ClassClassPath(Class c) {
+    public ClassClassPath(Class<?> c) {
         thisClass = c;
     }
 
@@ -70,27 +74,24 @@ public class ClassClassPath implements ClassPath {
     /**
      * Obtains a class file by <code>getResourceAsStream()</code>.
      */
-    public InputStream openClassfile(String classname) {
-        String jarname = "/" + classname.replace('.', '/') + ".class";
-        return thisClass.getResourceAsStream(jarname);
+    @Override
+    public InputStream openClassfile(String classname) throws NotFoundException {
+        String filename = '/' + classname.replace('.', '/') + ".class";
+        return thisClass.getResourceAsStream(filename);
     }
 
     /**
      * Obtains the URL of the specified class file.
      *
-     * @return null if the class file could not be found. 
+     * @return null if the class file could not be found.
      */
+    @Override
     public URL find(String classname) {
-        String jarname = "/" + classname.replace('.', '/') + ".class";
-        return thisClass.getResource(jarname);
+        String filename = '/' + classname.replace('.', '/') + ".class";
+        return thisClass.getResource(filename);
     }
 
-    /**
-     * Does nothing.
-     */
-    public void close() {
-    }
-
+    @Override
     public String toString() {
         return thisClass.getName() + ".class";
     }

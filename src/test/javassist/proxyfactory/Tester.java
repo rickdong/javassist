@@ -8,12 +8,18 @@ import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
 
 class Hand implements java.io.Serializable {
+    /** default serialVersionUID */
+    private static final long serialVersionUID = 1L;
     public int setHandler(int i) { return i; }
     int getHandler() { return 3; }
 }
 
+@SuppressWarnings({"rawtypes","unchecked","resource"})
 public class Tester extends TestCase {
     static class MHandler implements MethodHandler, java.io.Serializable {
+        /** default serialVersionUID */
+        private static final long serialVersionUID = 1L;
+
         public Object invoke(Object self, Method m, Method proceed,
                              Object[] args) throws Throwable {
             System.out.println("Name: " + m.getName());
@@ -27,7 +33,7 @@ public class Tester extends TestCase {
         ProxyFactory f = new ProxyFactory();
         f.setSuperclass(Hand.class);
         Class c = f.createClass();
-        Hand foo = (Hand)c.newInstance();
+        Hand foo = (Hand)c.getConstructor().newInstance();
         ((Proxy)foo).setHandler(mi);
         assertTrue(ProxyFactory.isProxyClass(c));
         assertEquals(3, foo.getHandler());

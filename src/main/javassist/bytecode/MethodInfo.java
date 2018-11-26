@@ -59,7 +59,7 @@ public class MethodInfo {
     int name;
     String cachedName;
     int descriptor;
-    ArrayList attribute; // may be null
+    List<AttributeInfo> attribute; // may be null
 
     /**
      * If this value is true, Javassist maintains a <code>StackMap</code> attribute
@@ -129,7 +129,8 @@ public class MethodInfo {
      * @see Descriptor
      */
     public MethodInfo(ConstPool cp, String methodname, MethodInfo src,
-            Map classnameMap) throws BadBytecode {
+            Map<String,String> classnameMap) throws BadBytecode
+    {
         this(cp);
         read(src, methodname, classnameMap);
     }
@@ -137,6 +138,7 @@ public class MethodInfo {
     /**
      * Returns a string representation of the object.
      */
+    @Override
     public String toString() {
         return getName() + " " + getDescriptor();
     }
@@ -157,7 +159,7 @@ public class MethodInfo {
     }
 
     void prune(ConstPool cp) {
-        ArrayList newAttributes = new ArrayList();
+        List<AttributeInfo> newAttributes = new ArrayList<AttributeInfo>();
 
         AttributeInfo invisibleAnnotations
             = getAttribute(AnnotationsAttribute.invisibleTag);
@@ -304,9 +306,9 @@ public class MethodInfo {
      * @return a list of <code>AttributeInfo</code> objects.
      * @see AttributeInfo
      */
-    public List getAttributes() {
+    public List<AttributeInfo> getAttributes() {
         if (attribute == null)
-            attribute = new ArrayList();
+            attribute = new ArrayList<AttributeInfo>();
 
         return attribute;
     }
@@ -314,6 +316,11 @@ public class MethodInfo {
     /**
      * Returns the attribute with the specified name. If it is not found, this
      * method returns null.
+     * 
+     * <p>An attribute name can be obtained by, for example,
+     * {@link AnnotationsAttribute#visibleTag} or
+     * {@link AnnotationsAttribute#invisibleTag}.
+     * </p>
      * 
      * @param name attribute name
      * @return an <code>AttributeInfo</code> object or null.
@@ -324,6 +331,17 @@ public class MethodInfo {
     }
 
     /**
+     * Removes an attribute with the specified name.
+     *
+     * @param name      attribute name.
+     * @return          the removed attribute or null.
+     * @since 3.21
+     */
+    public AttributeInfo removeAttribute(String name) {
+        return AttributeInfo.remove(attribute, name);
+    }
+
+    /**
      * Appends an attribute. If there is already an attribute with the same
      * name, the new one substitutes for it.
      *
@@ -331,7 +349,7 @@ public class MethodInfo {
      */
     public void addAttribute(AttributeInfo info) {
         if (attribute == null)
-            attribute = new ArrayList();
+            attribute = new ArrayList<AttributeInfo>();
 
         AttributeInfo.remove(attribute, info.getName());
         attribute.add(info);
@@ -375,7 +393,7 @@ public class MethodInfo {
     public void setExceptionsAttribute(ExceptionsAttribute cattr) {
         removeExceptionsAttribute();
         if (attribute == null)
-            attribute = new ArrayList();
+            attribute = new ArrayList<AttributeInfo>();
 
         attribute.add(cattr);
     }
@@ -397,7 +415,7 @@ public class MethodInfo {
     public void setCodeAttribute(CodeAttribute cattr) {
         removeCodeAttribute();
         if (attribute == null)
-            attribute = new ArrayList();
+            attribute = new ArrayList<AttributeInfo>();
 
         attribute.add(cattr);
     }
@@ -520,8 +538,7 @@ public class MethodInfo {
         }
     }
 
-    private void read(MethodInfo src, String methodname, Map classnames)
-            throws BadBytecode {
+    private void read(MethodInfo src, String methodname, Map<String,String> classnames) {
         ConstPool destCp = constPool;
         accessFlags = src.accessFlags;
         name = destCp.addUtf8Info(methodname);
@@ -531,7 +548,7 @@ public class MethodInfo {
         String desc2 = Descriptor.rename(desc, classnames);
         descriptor = destCp.addUtf8Info(desc2);
 
-        attribute = new ArrayList();
+        attribute = new ArrayList<AttributeInfo>();
         ExceptionsAttribute eattr = src.getExceptionsAttribute();
         if (eattr != null)
             attribute.add(eattr.copy(destCp, classnames));
@@ -546,7 +563,7 @@ public class MethodInfo {
         name = in.readUnsignedShort();
         descriptor = in.readUnsignedShort();
         int n = in.readUnsignedShort();
-        attribute = new ArrayList();
+        attribute = new ArrayList<AttributeInfo>();
         for (int i = 0; i < n; ++i)
             attribute.add(AttributeInfo.read(constPool, in));
     }

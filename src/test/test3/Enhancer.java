@@ -11,6 +11,7 @@ class EnhanceTest {
     public void foo(String s) { System.out.println(s); }
 }
 
+@SuppressWarnings({"rawtypes","unchecked","unused"})
 public class Enhancer {
     private ClassPool pool;
     private CtClass superClass;
@@ -35,7 +36,7 @@ public class Enhancer {
                 }
             });
         Class c = e.createClass();
-        EnhanceTest obj = (EnhanceTest)c.newInstance();
+        EnhanceTest obj = (EnhanceTest)c.getConstructor().newInstance();
         obj.foo("test");
     }
 

@@ -16,11 +16,12 @@
 
 package javassist.tools;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 import javassist.CannotCompileException;
 import javassist.CtBehavior;
-
-import java.util.HashMap;
-import java.util.UUID;
 
 /**
  * Creates bytecode that when executed calls back to the instance's result method.
@@ -28,7 +29,7 @@ import java.util.UUID;
  * <p>Example of how to create and insert a callback:</p>
  * <pre>
  * ctMethod.insertAfter(new Callback("Thread.currentThread()") {
- *     public void result(Object... objects) {
+ *     public void result(Object[] objects) {
  *         Thread thread = (Thread) objects[0];
  *         // do something with thread...
  *     }
@@ -37,7 +38,7 @@ import java.util.UUID;
  * <p>Contains utility methods for inserts callbacks in <code>CtBehaviour</code>, example:</p>
  * <pre>
  * insertAfter(ctBehaviour, new Callback("Thread.currentThread(), dummyString") {
- *     public void result(Object... objects) {
+ *     public void result(Object[] objects) {
  *         Thread thread = (Thread) objects[0];
  *         // do something with thread...
  *     }
@@ -45,10 +46,11 @@ import java.util.UUID;
  * </pre>
  *
  * @author Marten Hedborg
+ * @author Shigeru Chiba
  */
 public abstract class Callback {
 
-    public static HashMap<String, Callback> callbacks = new HashMap<String, Callback>();
+    public static Map<String,Callback> callbacks = new HashMap<String,Callback>();
 
     private final String sourceCode;
 
@@ -70,7 +72,7 @@ public abstract class Callback {
      *
      * @param objects   Objects that the bytecode in callback returns
      */
-    public abstract void result(Object... objects);
+    public abstract void result(Object[] objects);
 
     @Override
     public String toString(){

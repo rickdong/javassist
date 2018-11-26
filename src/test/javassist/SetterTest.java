@@ -3,9 +3,11 @@ import java.lang.reflect.Method;
 
 import junit.framework.TestCase;
 
+@SuppressWarnings({"rawtypes","unchecked"})
 public class SetterTest extends TestCase {
 
     ClassPool pool;
+    Class<?> capability;
 
     public SetterTest(String name) {
          super(name);
@@ -14,6 +16,7 @@ public class SetterTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
         pool = ClassPool.getDefault();
+        capability = Class.forName("DefineClassCapability");
     }
 
     /**
@@ -27,9 +30,9 @@ public class SetterTest extends TestCase {
         CtField field = new CtField(CtClass.booleanType, "broken", clazz);
         clazz.addField(field, "true");
         clazz.addMethod(CtNewMethod.getter("isBroken", field));
-        Class _class = clazz.toClass();
+        Class _class = clazz.toClass(capability);
 
-        Object object = _class.newInstance();
+        Object object = _class.getConstructor().newInstance();
         check(_class, object, true);
     }
 
@@ -45,9 +48,9 @@ public class SetterTest extends TestCase {
         clazz.addField(field, "true");
         clazz.addMethod(CtNewMethod.getter("isBroken", field));
         clazz.addMethod(CtNewMethod.setter("setBroken", field));
-        Class _class = clazz.toClass();
+        Class _class = clazz.toClass(capability);
 
-        Object object = _class.newInstance();
+        Object object = _class.getConstructor().newInstance();
 
         set(_class, object, false);
         check(_class, object, false);
@@ -65,9 +68,9 @@ public class SetterTest extends TestCase {
         field.setModifiers(Modifier.STATIC);
         clazz.addField(field, "true");
         clazz.addMethod(CtNewMethod.getter("isBroken", field));
-        Class _class = clazz.toClass();
+        Class _class = clazz.toClass(capability);
 
-        Object object = _class.newInstance();
+        Object object = _class.getConstructor().newInstance();
         check(_class, object, true);
     }
 
@@ -84,9 +87,9 @@ public class SetterTest extends TestCase {
         clazz.addField(field, "true");
         clazz.addMethod(CtNewMethod.getter("isBroken", field));
         clazz.addMethod(CtNewMethod.setter("setBroken", field));
-        Class _class = clazz.toClass();
+        Class _class = clazz.toClass(capability);
 
-        Object object = _class.newInstance();
+        Object object = _class.getConstructor().newInstance();
 
         set(_class, object, false);
         check(_class, object, false);
@@ -106,6 +109,6 @@ public class SetterTest extends TestCase {
     {
         Method method = _class.getMethod("setBroken",
                                          new Class[] {Boolean.TYPE});
-        method.invoke(object, new Object[] {new Boolean(willBe)});
+        method.invoke(object, new Object[] { Boolean.valueOf(willBe)});
     }
 }

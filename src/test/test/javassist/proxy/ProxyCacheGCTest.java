@@ -11,6 +11,7 @@ import junit.framework.TestCase;
  * test which checks that proxy classes are not retained after their classloader is released.
  * this is a before and after test which validates JASSIST-104
  */
+@SuppressWarnings({"rawtypes","unchecked"})
 public class ProxyCacheGCTest extends TestCase
 {
     /**
@@ -89,12 +90,12 @@ public class ProxyCacheGCTest extends TestCase
             // now create a proxyfactory and use it to create a proxy
 
             ProxyFactory factory = new ProxyFactory();
-            Class javaTargetClass = classPool.toClass(ctTargetClass);
-            Class javaHandlerClass = classPool.toClass(ctHandlerClass);
-            Class javaFilterClass = classPool.toClass(ctFilterClass);
+            Class javaTargetClass = classPool.toClass(ctTargetClass, test.javassist.DefineClassCapability.class);
+            Class javaHandlerClass = classPool.toClass(ctHandlerClass, test.javassist.DefineClassCapability.class);
+            Class javaFilterClass = classPool.toClass(ctFilterClass, test.javassist.DefineClassCapability.class);
 
-            MethodHandler handler= (MethodHandler)javaHandlerClass.newInstance();
-            MethodFilter filter = (MethodFilter)javaFilterClass.newInstance();
+            MethodHandler handler= (MethodHandler)javaHandlerClass.getConstructor().newInstance();
+            MethodFilter filter = (MethodFilter)javaFilterClass.getConstructor().newInstance();
 
             // ok, now create a factory and a proxy class and proxy from that factory
             factory.setFilter(filter);
@@ -102,7 +103,7 @@ public class ProxyCacheGCTest extends TestCase
             // factory.setSuperclass(Object.class);
 
             Class proxyClass = factory.createClass();
-            Object target = proxyClass.newInstance();
+            Object target = proxyClass.getConstructor().newInstance();
             ((ProxyObject)target).setHandler(handler);
         } catch (Exception e) {
             e.printStackTrace();

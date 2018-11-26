@@ -28,6 +28,7 @@ class ByteVector implements Cloneable {
         size = 0;
     }
 
+    @Override
     public Object clone() throws CloneNotSupportedException {
         ByteVector bv = (ByteVector)super.clone();
         bv.buffer = (byte[])buffer.clone();
@@ -164,6 +165,7 @@ public class Bytecode extends ByteVector implements Cloneable, Opcode {
      * The constant pool object is shared between this object
      * and the cloned object.
      */
+    @Override
     public Object clone() {
         try {
             Bytecode bc = (Bytecode)super.clone();
@@ -325,6 +327,7 @@ public class Bytecode extends ByteVector implements Cloneable, Opcode {
      *
      * @throws ArrayIndexOutOfBoundsException   if offset is invalid.
      */
+    @Override
     public int read(int offset) {
         return super.read(offset);
     }
@@ -355,6 +358,7 @@ public class Bytecode extends ByteVector implements Cloneable, Opcode {
      *
      * @throws ArrayIndexOutOfBoundsException   if offset is invalid.
      */
+    @Override
     public void write(int offset, int value) {
         super.write(offset, value);
     }
@@ -380,6 +384,7 @@ public class Bytecode extends ByteVector implements Cloneable, Opcode {
     /**
      * Appends an 8bit value to the end of the bytecode sequence.
      */
+    @Override
     public void add(int code) {
         super.add(code);
     }
@@ -396,6 +401,7 @@ public class Bytecode extends ByteVector implements Cloneable, Opcode {
      *
      * @param length    the gap length in byte.
      */
+    @Override
     public void addGap(int length) {
         super.addGap(length);
     }
@@ -976,13 +982,27 @@ public class Bytecode extends ByteVector implements Cloneable, Opcode {
      * @see Descriptor#ofConstructor(CtClass[])
      */
     public void addInvokespecial(boolean isInterface, int clazz, String name, String desc) {
-        add(INVOKESPECIAL);
         int index;
         if (isInterface)
             index = constPool.addInterfaceMethodrefInfo(clazz, name, desc);
         else
             index = constPool.addMethodrefInfo(clazz, name, desc);
 
+        addInvokespecial(index, desc);
+    }
+
+    /**
+     * Appends INVOKESPECIAL.
+     *
+     * @param index     the index of <code>CONSTANT_Methodref_info</code>
+     *                  or <code>CONSTANT_InterfaceMethodref_info</code>
+     * @param desc      the descriptor of the method signature.
+     *
+     * @see Descriptor#ofMethod(CtClass,CtClass[])
+     * @see Descriptor#ofConstructor(CtClass[])
+     */
+    public void addInvokespecial(int index, String desc) {
+        add(INVOKESPECIAL);
         addIndex(index);
         growStack(Descriptor.dataSize(desc) - 1);
     }
@@ -1011,13 +1031,20 @@ public class Bytecode extends ByteVector implements Cloneable, Opcode {
      * @see Descriptor#ofMethod(CtClass,CtClass[])
      */
     public void addInvokestatic(CtClass clazz, String name, String desc) {
-        addInvokestatic(constPool.addClassInfo(clazz), name, desc);
+        boolean isInterface;
+        if (clazz == THIS)
+            isInterface = false;
+        else
+            isInterface = clazz.isInterface();
+
+        addInvokestatic(constPool.addClassInfo(clazz), name, desc, isInterface);
     }
 
     /**
      * Appends INVOKESTATIC.
      *
      * @param classname the fully-qualified class name.
+     *                  It must not be an interface-type name.
      * @param name      the method name
      * @param desc      the descriptor of the method signature.
      *
@@ -1031,15 +1058,26 @@ public class Bytecode extends ByteVector implements Cloneable, Opcode {
      * Appends INVOKESTATIC.
      *
      * @param clazz     the index of <code>CONSTANT_Class_info</code>
-     *                  structure.
+     *                  structure.  It must not be an interface type.
      * @param name      the method name
      * @param desc      the descriptor of the method signature.
      *
      * @see Descriptor#ofMethod(CtClass,CtClass[])
      */
     public void addInvokestatic(int clazz, String name, String desc) {
+        addInvokestatic(clazz, name, desc, false);
+    }
+
+    private void addInvokestatic(int clazz, String name, String desc,
+                                 boolean isInterface) {
         add(INVOKESTATIC);
-        addIndex(constPool.addMethodrefInfo(clazz, name, desc));
+        int index;
+        if (isInterface)
+            index = constPool.addInterfaceMethodrefInfo(clazz, name, desc);
+        else
+            index = constPool.addMethodrefInfo(clazz, name, desc);
+
+        addIndex(index);
         growStack(Descriptor.dataSize(desc));
     }
 

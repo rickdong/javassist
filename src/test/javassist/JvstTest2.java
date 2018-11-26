@@ -2,11 +2,17 @@ package javassist;
 
 import java.io.*;
 import java.net.URL;
+
+import org.junit.FixMethodOrder;
+import org.junit.runners.MethodSorters;
+
 import java.lang.reflect.Method;
 
-import javassist.bytecode.ClassFile;
 import javassist.expr.*;
+import test2.DefineClassCapability;
 
+@SuppressWarnings({"rawtypes","unused"})
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class JvstTest2 extends JvstTestRoot {
     public JvstTest2(String name) {
          super(name);
@@ -295,8 +301,12 @@ public class JvstTest2 extends JvstTestRoot {
 
         url = cp.find("java.lang.Object").toString();
         System.out.println(url);
-        assertTrue(url.startsWith("jar:file:"));
-        assertTrue(url.endsWith(".jar!/java/lang/Object.class"));
+        if (JvstTest.java9)
+            assertEquals("jrt:/java.base/java/lang/Object.class", url);
+        else {
+            assertTrue(url.startsWith("jar:file:"));
+            assertTrue(url.endsWith(".jar!/java/lang/Object.class"));
+        }
 
         assertNull(cp.find("class.not.Exist"));
 
@@ -304,7 +314,7 @@ public class JvstTest2 extends JvstTestRoot {
         cp.insertClassPath(".");
 
         url = cp.find("test2.Inner").toString();
-        System.out.println(url);
+        System.out.println("testURL: " + url);
         assertTrue(url.startsWith("file:/"));
         assertTrue(url.endsWith("/test2/Inner.class"));
 
@@ -314,7 +324,7 @@ public class JvstTest2 extends JvstTestRoot {
         cp.insertClassPath(JAR_PATH + "javassist.jar");
 
         url = cp.find("javassist.CtClass").toString();
-        System.out.println(url);
+        System.out.println("testURL: " + url);
         assertTrue(url.startsWith("jar:file:"));
         assertTrue(url.endsWith("javassist.jar!/javassist/CtClass.class"));
 
@@ -324,9 +334,9 @@ public class JvstTest2 extends JvstTestRoot {
         cp.insertClassPath(new LoaderClassPath(cloader));
 
         url = cp.find("javassist.CtMethod").toString();
-        System.out.println(url);
-        // assertTrue(url.startsWith("jar:file:"));
-        // assertTrue(url.endsWith("javassist.jar!/javassist/CtMethod.class"));
+        System.out.println("testURL: " + url);
+        assertTrue(url.startsWith("file:"));
+        assertTrue(url.endsWith("/javassist/CtMethod.class"));
 
         assertNull(cp.find("javassist.TestURL"));
 
@@ -334,7 +344,7 @@ public class JvstTest2 extends JvstTestRoot {
         cp.insertClassPath(new ByteArrayClassPath("test2.ByteArray", null));
 
         url = cp.find("test2.ByteArray").toString();
-        System.out.println(url);
+        System.out.println("testURL: " + url);
         assertTrue(
             url.equals("file:/ByteArrayClassPath/test2/ByteArray.class"));
 
@@ -361,8 +371,13 @@ public class JvstTest2 extends JvstTestRoot {
         CtClass cc = sloader.get("java.lang.String");
         String url = cc.getURL().toString();
         System.out.println(url);
-        assertTrue(url.startsWith("jar:file:"));
-        assertTrue(url.endsWith(".jar!/java/lang/String.class"));
+        if (JvstTest.java9) {
+            assertEquals("jrt:/java.base/java/lang/String.class", url);
+        }
+        else {
+            assertTrue(url.startsWith("jar:file:"));
+            assertTrue(url.endsWith(".jar!/java/lang/String.class"));
+        }
 
         cc = sloader.get("int");
         try {
@@ -516,15 +531,15 @@ public class JvstTest2 extends JvstTestRoot {
         CtClass out = sloader.get("test2.Anon");
         CtClass inner = sloader.get("test2.Anon$1");
         if (System.getProperty("java.vm.version").startsWith("1.4"))
-            assertTrue(inner.getEnclosingMethod() == null);
+            assertTrue(inner.getEnclosingBehavior() == null);
         else {
-            assertEquals("make", inner.getEnclosingMethod().getName());
+            assertEquals("make", inner.getEnclosingBehavior().getName());
             assertEquals(out, inner.getDeclaringClass());
             assertEquals(out,
-                         inner.getEnclosingMethod().getDeclaringClass());
+                         inner.getEnclosingBehavior().getDeclaringClass());
         }
 
-        assertNull(out.getEnclosingMethod());
+        assertNull(out.getEnclosingBehavior());
         assertNull(out.getEnclosingBehavior());
 
         CtClass inner2 = sloader.get("test2.Anon$Anon2$1");
@@ -695,7 +710,7 @@ public class JvstTest2 extends JvstTestRoot {
     public void testToClass() throws Exception {
         ClassPool cp = ClassPool.getDefault();
         CtClass cc = cp.makeClass("test2.ToClassTest");
-        Class c = cc.toClass();
+        Class c = cc.toClass(DefineClassCapability.class);
 	assertEquals(getClass().getClassLoader(), c.getClassLoader());
     }
 
@@ -1423,32 +1438,32 @@ public class JvstTest2 extends JvstTestRoot {
         CtField f = new CtField(CtClass.intType, "sff1", cc);
         f.setModifiers(Modifier.STATIC | Modifier.FINAL);
         cc.addField(f, "5");
-        assertEquals(new Integer(5), f.getConstantValue());
+        assertEquals(Integer.valueOf(5), f.getConstantValue());
 
         f = new CtField(CtClass.longType, "sff2", cc);
         f.setModifiers(Modifier.STATIC | Modifier.FINAL);
         cc.addField(f, "6");
-        assertEquals(new Long(6), f.getConstantValue());
+        assertEquals(Long.valueOf(6), f.getConstantValue());
 
         f = new CtField(CtClass.floatType, "sff3", cc);
         f.setModifiers(Modifier.STATIC | Modifier.FINAL);
         cc.addField(f, "7");
-        assertEquals(new Float(7.0F), f.getConstantValue());
+        assertEquals(Float.valueOf(7.0F), f.getConstantValue());
 
         f = new CtField(CtClass.floatType, "sff4", cc);
         f.setModifiers(Modifier.STATIC | Modifier.FINAL);
         cc.addField(f, "8.0");
-        assertEquals(new Float(8.0F), f.getConstantValue());
+        assertEquals(Float.valueOf(8.0F), f.getConstantValue());
 
         f = new CtField(CtClass.doubleType, "sff5", cc);
         f.setModifiers(Modifier.STATIC | Modifier.FINAL);
         cc.addField(f, "9");
-        assertEquals(new Double(9.0), f.getConstantValue());
+        assertEquals(Double.valueOf(9.0), f.getConstantValue());
 
         f = new CtField(CtClass.doubleType, "sff6", cc);
         f.setModifiers(Modifier.STATIC | Modifier.FINAL);
         cc.addField(f, "10.0");
-        assertEquals(new Double(10.0), f.getConstantValue());
+        assertEquals(Double.valueOf(10.0), f.getConstantValue());
 
         f = new CtField(sloader.get("java.lang.String"), "sff7", cc);
         f.setModifiers(Modifier.STATIC | Modifier.FINAL);

@@ -16,7 +16,6 @@
 
 package javassist.util.proxy;
 
-import java.lang.reflect.Method;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -35,38 +34,14 @@ import javassist.bytecode.ClassFile;
  * @see ProxyFactory
  */
 public class FactoryHelper {
-    private static java.lang.reflect.Method defineClass1, defineClass2;
-
-    static {
-        try {
-            Class cl = Class.forName("java.lang.ClassLoader");
-            defineClass1 = SecurityActions.getDeclaredMethod(
-                        cl,
-                        "defineClass",
-                        new Class[] { String.class, byte[].class,
-                                      int.class, int.class });
-
-            defineClass2 = SecurityActions.getDeclaredMethod(
-                        cl,
-                        "defineClass",
-                        new Class[] { String.class, byte[].class,
-                              int.class, int.class, ProtectionDomain.class });
-        }
-        catch (Exception e) {
-            throw new RuntimeException("cannot initialize");
-        }
-    }
-
     /**
      * Returns an index for accessing arrays in this class.
      *
      * @throws RuntimeException     if a given type is not a primitive type.
      */
-    public static final int typeIndex(Class type) {
-        Class[] list = primitiveTypes;
-        int n = list.length;
-        for (int i = 0; i < n; i++)
-            if (list[i] == type)
+    public static final int typeIndex(Class<?> type) {
+        for (int i = 0; i < primitiveTypes.length; i++)
+            if (primitiveTypes[i] == type)
                 return i;
 
         throw new RuntimeException("bad type:" + type.getName());
@@ -75,7 +50,7 @@ public class FactoryHelper {
     /**
      * <code>Class</code> objects representing primitive types.
      */
-    public static final Class[] primitiveTypes = {
+    public static final Class<?>[] primitiveTypes = {
         Boolean.TYPE, Byte.TYPE, Character.TYPE, Short.TYPE, Integer.TYPE,
         Long.TYPE, Float.TYPE, Double.TYPE, Void.TYPE
     };
@@ -127,62 +102,62 @@ public class FactoryHelper {
     /**
      * Loads a class file by a given class loader.
      * This method uses a default protection domain for the class
-     * but it may not work with a security manager or a sigend jar file.
+     * but it may not work with a security manager or a signed jar file.
      *
-     * @see #toClass(ClassFile,ClassLoader,ProtectionDomain)
+     * @see #toClass(ClassFile,Class,ClassLoader,ProtectionDomain)
+     * @deprecated
      */
-    public static Class toClass(ClassFile cf, ClassLoader loader)
+    public static Class<?> toClass(ClassFile cf, ClassLoader loader)
         throws CannotCompileException
     {
-        return toClass(cf, loader, null);
+        return toClass(cf, null, loader, null);
     }
 
     /**
      * Loads a class file by a given class loader.
      *
+     * @param neighbor      a class belonging to the same package that
+     *                      the loaded class belongs to.
+     *                      It can be null.
+     * @param loader        The class loader.  It can be null if {@code neighbor}
+     *                      is not null.
      * @param domain        if it is null, a default domain is used.
      * @since 3.3
      */
-    public static Class toClass(ClassFile cf, ClassLoader loader, ProtectionDomain domain)
-            throws CannotCompileException
+    public static Class<?> toClass(ClassFile cf, Class<?> neighbor,
+                                   ClassLoader loader, ProtectionDomain domain)
+        throws CannotCompileException
     {
         try {
             byte[] b = toBytecode(cf);
-            Method method;
-            Object[] args;
-            if (domain == null) {
-                method = defineClass1;
-                args = new Object[] { cf.getName(), b, new Integer(0),
-                        new Integer(b.length) };
-            }
-            else {
-                method = defineClass2;
-                args = new Object[] { cf.getName(), b, new Integer(0),
-                        new Integer(b.length), domain };
-            }
-
-            return toClass2(method, loader, args);
+            if (ProxyFactory.onlyPublicMethods)
+                return DefineClassHelper.toPublicClass(cf.getName(), b);
+            else
+                return DefineClassHelper.toClass(cf.getName(), neighbor,
+                                                 loader, domain, b);
         }
-        catch (RuntimeException e) {
-            throw e;
-        }
-        catch (java.lang.reflect.InvocationTargetException e) {
-            throw new CannotCompileException(e.getTargetException());
-        }
-        catch (Exception e) {
+        catch (IOException e) {
             throw new CannotCompileException(e);
         }
-    }
+     }
 
-    private static synchronized Class toClass2(Method method,
-                                        ClassLoader loader, Object[] args)
-        throws Exception
+    /**
+     * Loads a class file by a given lookup.
+     *
+     * @param lookup        used to define the class.
+     * @since 3.24
+     */
+    public static Class<?> toClass(ClassFile cf, java.lang.invoke.MethodHandles.Lookup lookup)
+        throws CannotCompileException
     {
-        SecurityActions.setAccessible(method, true);
-        Class clazz = (Class)method.invoke(loader, args);
-        SecurityActions.setAccessible(method, false);
-        return clazz;
-    }
+        try {
+            byte[] b = toBytecode(cf);
+            return DefineClassHelper.toClass(lookup, b);
+        }
+        catch (IOException e) {
+            throw new CannotCompileException(e);
+        }
+     }
 
     private static byte[] toBytecode(ClassFile cf) throws IOException {
         ByteArrayOutputStream barray = new ByteArrayOutputStream();

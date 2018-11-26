@@ -5,6 +5,7 @@ import javassist.bytecode.annotation.*;
 import javassist.expr.*;
 import test3.*;
 
+@SuppressWarnings({"rawtypes","unchecked","unused"})
 public class JvstTest3 extends JvstTestRoot {
     public JvstTest3(String name) {
          super(name);
@@ -339,7 +340,7 @@ public class JvstTest3 extends JvstTestRoot {
         System.out.println("Num Annotation : " +ans.length);
 
         // c.debugWriteFile();
-        Class newclass = c.toClass();
+        Class newclass = c.toClass(DefineClassCapability.class);
         java.lang.annotation.Annotation[] anns = newclass.getAnnotations();
         System.out.println("Num NewClass Annotation : " +anns.length);
         assertEquals(ans.length, anns.length);
@@ -736,7 +737,7 @@ public class JvstTest3 extends JvstTestRoot {
         CtMethod m2 = cc2.getDeclaredMethod("getX");
         copyAnnotations(m1, m2);
         cc2.getClassFile();
-        Class clazz = cc2.toClass();
+        Class clazz = cc2.toClass(DefineClassCapability.class);
         java.lang.reflect.Method m = clazz.getDeclaredMethod("getX", new Class[0]);
         assertEquals(1, m.getAnnotations().length);
         test3.VisibleAnno a = m.getAnnotation(test3.VisibleAnno.class);
@@ -789,7 +790,7 @@ public class JvstTest3 extends JvstTestRoot {
         cc.addField(fobj, CtField.Initializer.constant("bar"));
 
         cc.writeFile();
-        Class clazz = cc.toClass();
+        Class clazz = cc.toClass(DefineClassCapability.class);
         assertEquals(2L, clazz.getField("j").getLong(null));
         assertEquals(3, clazz.getField("i").getInt(null));
         assertEquals(4, clazz.getField("s").getShort(null));
@@ -852,7 +853,7 @@ public class JvstTest3 extends JvstTestRoot {
     {
         java.lang.reflect.Method m =
             target.getClass().getMethod(method, new Class[] { long.class, int.class });
-        Object res = m.invoke(target, new Object[] { new Long(arg1), new Integer(arg2)});
+        Object res = m.invoke(target, new Object[] { Long.valueOf(arg1), Integer.valueOf(arg2)});
         return ((Integer)res).intValue();
     }
 
@@ -861,7 +862,7 @@ public class JvstTest3 extends JvstTestRoot {
     {
         java.lang.reflect.Method m =
             target.getClass().getMethod(method, new Class[] { int.class, double.class });
-        Object res = m.invoke(target, new Object[] { new Integer(arg1), new Double(arg2)});
+        Object res = m.invoke(target, new Object[] { Integer.valueOf(arg1), Double.valueOf(arg2)});
         return ((Integer)res).intValue();
     }
 
@@ -870,7 +871,7 @@ public class JvstTest3 extends JvstTestRoot {
     {
         java.lang.reflect.Method m =
             target.getClass().getMethod(method, new Class[] { int.class, String.class, Object.class });
-        Object res = m.invoke(target, new Object[] { new Integer(arg1), arg2, arg3});
+        Object res = m.invoke(target, new Object[] { Integer.valueOf(arg1), arg2, arg3});
         return ((Integer)res).intValue();
     }
 
@@ -1086,7 +1087,8 @@ public class JvstTest3 extends JvstTestRoot {
         CtMethod m3 = CtMethod.make("public void foo3() {}", cc);
         try {
             cc.addMethod(m3);
-            fail();
+            if (ClassFile.MAJOR_VERSION < ClassFile.JAVA_8)
+                fail();
         }
         catch (CannotCompileException e) {
             // System.out.println(e);
@@ -1106,7 +1108,7 @@ public class JvstTest3 extends JvstTestRoot {
         sb.append("}"); 
         ctc.addMethod(CtNewMethod.make(sb.toString(), ctc));
         ctc.debugWriteFile();
-        ctc.toClass().newInstance(); 
+        ctc.toClass(DefineClassCapability.class).getConstructor().newInstance();
     }
 
     // JIRA-83

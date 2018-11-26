@@ -7,6 +7,7 @@ import javassist.*;
 import javassist.bytecode.annotation.*;
 import javassist.bytecode.SignatureAttribute.*;
 
+@SuppressWarnings("unused")
 public class BytecodeTest extends TestCase {
     public static final String PATH = JvstTest.PATH;
     private ClassPool loader, dloader;
@@ -29,7 +30,7 @@ public class BytecodeTest extends TestCase {
     }
 
     protected Object make(String name) throws Exception {
-        return cloader.loadClass(name).newInstance();
+        return cloader.loadClass(name).getConstructor().newInstance();
     }
 
     protected int invoke(Object target, String method) throws Exception {
@@ -824,12 +825,6 @@ public class BytecodeTest extends TestCase {
         assertEquals("test4.InvokeDyn", cc2.getClassFile().getName());
         ConstPool cPool2 = cc2.getClassFile().getConstPool();
         assertEquals("(I)V", cPool2.getUtf8Info(cPool2.getMethodTypeInfo(mtIndex)));
-    }
-
-    public static void main(String[] args) {
-        // junit.textui.TestRunner.run(suite());
-        junit.awtui.TestRunner.main(new String[] {
-            "javassist.bytecode.BytecodeTest" });
     }
 
     public static Test suite() {

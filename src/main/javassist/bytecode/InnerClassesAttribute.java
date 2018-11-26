@@ -17,8 +17,8 @@
 package javassist.bytecode;
 
 import java.io.DataInputStream;
-import java.util.Map;
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * <code>InnerClasses_attribute</code>.
@@ -64,15 +64,16 @@ public class InnerClassesAttribute extends AttributeInfo {
     /**
      * Returns the class name indicated
      * by <code>classes[nth].inner_class_info_index</code>.
+     * The class name is fully-qualified and separated by dot.
      *
      * @return null or the class name.
+     * @see ConstPool#getClassInfo(int)
      */
     public String innerClass(int nth) {
         int i = innerClassIndex(nth);
         if (i == 0)
             return null;
-        else
-            return constPool.getClassInfo(i);
+        return constPool.getClassInfo(i);
     }
 
     /**
@@ -100,8 +101,7 @@ public class InnerClassesAttribute extends AttributeInfo {
         int i = outerClassIndex(nth);
         if (i == 0)
             return null;
-        else
-            return constPool.getClassInfo(i);
+        return constPool.getClassInfo(i);
     }
 
     /**
@@ -129,8 +129,7 @@ public class InnerClassesAttribute extends AttributeInfo {
         int i = innerNameIndex(nth);
         if (i == 0)
             return null;
-        else
-            return constPool.getUtf8Info(i);
+        return constPool.getUtf8Info(i);
     }
 
     /**
@@ -154,6 +153,22 @@ public class InnerClassesAttribute extends AttributeInfo {
      */
     public void setAccessFlags(int nth, int flags) {
         ByteArray.write16bit(flags, get(), nth * 8 + 8);
+    }
+
+    /**
+     * Finds the entry for the given inner class.
+     *
+     * @param name      the fully-qualified class name separated by dot and $.
+     * @return the index or -1 if not found.
+     * @since 3.22
+     */
+    public int find(String name) {
+        int n = tableLength();
+        for (int i = 0; i < n; i++)
+            if (name.equals(innerClass(i)))
+                return i;
+
+        return -1;
     }
 
     /**
@@ -239,7 +254,8 @@ public class InnerClassesAttribute extends AttributeInfo {
      * @param classnames        pairs of replaced and substituted
      *                          class names.
      */
-    public AttributeInfo copy(ConstPool newCp, Map classnames) {
+    @Override
+    public AttributeInfo copy(ConstPool newCp, Map<String,String> classnames) {
         byte[] src = get();
         byte[] dest = new byte[src.length];
         ConstPool cp = getConstPool();

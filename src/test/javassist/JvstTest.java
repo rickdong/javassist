@@ -1,15 +1,24 @@
 package javassist;
 
 import junit.framework.*;
+import test1.DefineClassCapability;
+
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import javassist.bytecode.*;
 import javassist.expr.*;
 import javassist.runtime.*;
 
+@SuppressWarnings({"rawtypes","unused", "resource"})
 public class JvstTest extends JvstTestRoot {
+    public static boolean java9;
+
     static {
         //javassist.bytecode.MethodInfo.doPreverify = true;
+        java9 = javassist.bytecode.ClassFile.MAJOR_VERSION
+                    >= javassist.bytecode.ClassFile.JAVA_9;
     }
     public JvstTest(String name) {
          super(name);
@@ -59,6 +68,36 @@ public class JvstTest extends JvstTestRoot {
         assertTrue("[class path: ]".equals(pool.toString()));
     }
 
+    public void testReleaseJarClassPathFileHandle() throws Exception {
+        String jarFileName = "./empty.jar";
+        ClassLoader classLoader = getClass().getClassLoader();
+        File jarFile = new File(classLoader.getResource(jarFileName).getFile());
+        assertTrue(jarFile.exists());
+
+        // Prepare class pool and force it to open the Jar file
+        ClassPool pool = ClassPool.getDefault();
+        ClassPath cp = pool.appendClassPath(jarFile.getAbsolutePath());
+        assertNull(cp.openClassfile("nothere.Dummy"));
+
+        // Assert that it is possible to delete the jar file.
+        // On Windows deleting an open file will fail, while on on Mac/Linux this is always possible.
+        // This check will thus only fail on Windows if the file is still open.
+        assertTrue(jarFile.delete());
+    }
+
+    public void testJarClassPath() throws Exception {
+        String jarFileName = "./simple.jar";
+        ClassLoader classLoader = getClass().getClassLoader();
+        File jarFile = new File(classLoader.getResource(jarFileName).getFile());
+        assertTrue(jarFile.exists());
+
+        ClassPool pool = ClassPool.getDefault();
+        ClassPath cp = pool.appendClassPath(jarFile.getAbsolutePath());
+        InputStream is = cp.openClassfile("com.test.Test");
+        assertNotNull(is);
+        is.close();
+    }
+
     public void testSubtype() throws Exception {
         CtClass cc = sloader.get("test1.Subtype");
         assertTrue(cc.subtypeOf(cc));
@@ -98,6 +137,10 @@ public class JvstTest extends JvstTestRoot {
         cc.addField(f2);
         CtField f3 = CtField.make("public int f3;", cc);
         cc.addField(f3);
+        CtField f4 = CtField.make("public int f4 = this.f2 + 3;", cc);
+        cc.addField(f4);
+        CtField fi = CtField.make("public test1.FieldInit.FI fi = new test1.FieldInit.FI(this);", cc);
+        cc.addField(fi);
         testFieldInitHash = f1.hashCode();
         cc.writeFile();
         Object obj = make(cc.getName());
@@ -107,6 +150,10 @@ public class JvstTest extends JvstTestRoot {
         assertEquals(3, value2);
         int value3 = obj.getClass().getField("f3").getInt(obj);
         assertEquals(0, value3);
+        int value4 = obj.getClass().getField("f4").getInt(obj);
+        assertEquals(6, value4);
+        Object obfi = obj.getClass().getField("fi").get(obj);
+        assertTrue(obfi.getClass().getField("fi").get(obfi) == obj);
     }
 
     /* test CodeIterator.insertExGap().
@@ -698,8 +745,8 @@ public class JvstTest extends JvstTestRoot {
 
         ctInterface.stopPruning(true);
         ctInterface.writeFile();
-        ctInterface.toClass();
-        targetCtClass.toClass();
+        ctInterface.toClass(DefineClassCapability.class);
+        targetCtClass.toClass(DefineClassCapability.class);
     }
 
     public void testDispatch() throws Exception {
@@ -842,7 +889,7 @@ public class JvstTest extends JvstTestRoot {
         // cloader.loadClass(cc.getName());
         java.io.File genDir = new java.io.File(".");
         java.net.URLClassLoader ucl = new java.net.URLClassLoader(
-                        new java.net.URL[] { genDir.toURL() }, null);
+                        new java.net.URL[] { genDir.toURI().toURL() }, null);
         Class intf = ucl.loadClass("test1.MkInterface");
     }
 
@@ -1041,7 +1088,7 @@ public class JvstTest extends JvstTestRoot {
     }
 
     public void testPackage() throws Exception {
-        Object obj = new Loader().loadClass("test1.Pac").newInstance();
+        Object obj = new Loader().loadClass("test1.Pac").getConstructor().newInstance();
         assertEquals(1, invoke(obj, "run"));
     }
 
@@ -1116,10 +1163,12 @@ public class JvstTest extends JvstTestRoot {
         suite.addTestSuite(javassist.SetterTest.class);
         suite.addTestSuite(javassist.bytecode.InsertGap0.class);
         suite.addTestSuite(javassist.tools.reflect.LoaderTest.class);
+        suite.addTestSuite(javassist.tools.CallbackTest.class);
         suite.addTestSuite(testproxy.ProxyTester.class);
         suite.addTestSuite(testproxy.ProxyFactoryPerformanceTest.class); // remove?
         suite.addTestSuite(javassist.proxyfactory.ProxyFactoryTest.class);
         suite.addTestSuite(javassist.proxyfactory.Tester.class);
+        suite.addTestSuite(javassist.HotswapTest.class);
         suite.addTestSuite(test.javassist.proxy.ProxySerializationTest.class);
         suite.addTestSuite(test.javassist.convert.ArrayAccessReplaceTest.class);
         suite.addTestSuite(test.javassist.proxy.JASSIST113RegressionTest.class);
