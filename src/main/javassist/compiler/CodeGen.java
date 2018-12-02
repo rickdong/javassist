@@ -18,7 +18,9 @@ package javassist.compiler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javassist.compiler.ast.*;
 import javassist.util.JvmNamesCache;
@@ -1873,12 +1875,22 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
     @Override
     public abstract void atMember(Member n) throws CompileError;
 
+    private static final Set<String> PRIM_TYPES = new HashSet<>(Arrays.asList("Z", "C", "B", "S", "I", "J", "F", "D"));
+
     @Override
     public void atVariable(Variable v) throws CompileError {
         Declarator d = v.getDeclarator();
         exprType = d.getType();
         arrayDim = d.getArrayDim();
         className = d.getClassName();
+        /*
+         * rdong - fix issue with primitive array on $0 when d.getType returns 307 - class, but
+         * really should be corresponding prim type instead given the array dim is >0. Otherwise, it
+         * would cause failure in compareSignature when looking up newly added method
+         */
+        if (className != null && className.length() == 1 && PRIM_TYPES.contains(className)) {
+            exprType = MemberResolver.descToType(className.charAt(0));
+        }
         int var = getLocalVar(d);
 
         if (arrayDim > 0)
@@ -1911,10 +1923,12 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
         case TRUE :
             bytecode.addIconst(1);
             exprType = BOOLEAN;
+            className = "Z";
             break;
         case FALSE :
             bytecode.addIconst(0);
             exprType = BOOLEAN;
+            className = "Z";
             break;
         case NULL :
             bytecode.addOpcode(ACONST_NULL);
@@ -1953,10 +1967,14 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
         int type = i.getType();
         if (type == IntConstant || type == CharConstant) {
             exprType = (type == IntConstant ? INT : CHAR);
+            // rdong - was missing setting the class name
+            className = (type == IntConstant ? "I" : "C");
             bytecode.addIconst((int)value);
         }
         else {
             exprType = LONG;
+            // rdong - was missing setting the class name
+            className = "J";
             bytecode.addLconst(value);
         }
     }
@@ -1966,10 +1984,14 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
         arrayDim = 0;
         if (d.getType() == DoubleConstant) {
             exprType = DOUBLE;
+            // rdong - was missing setting the class name
+            className = "D";
             bytecode.addDconst(d.get());
         }
         else {
             exprType = FLOAT;
+            // rdong - was missing setting the class name
+            className = "F";
             bytecode.addFconst((float)d.get());
         }
     }
