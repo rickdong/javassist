@@ -49,6 +49,7 @@ import javassist.bytecode.ExceptionsAttribute;
 import javassist.bytecode.FieldInfo;
 import javassist.bytecode.MethodInfo;
 import javassist.bytecode.Opcode;
+import javassist.bytecode.SignatureAttribute;
 import javassist.bytecode.StackMapTable;
 
 /*
@@ -186,6 +187,8 @@ public class ProxyFactory {
     private String basename;
     private String superName;
     private Class<?> thisClass;
+    private String genericSignature;
+
     /**
      * per factory setting initialised from current setting for useCache but able to be reset before each create call
      */
@@ -389,6 +392,7 @@ public class ProxyFactory {
         signatureMethods = null;
         hasGetHandler = false;
         thisClass = null;
+        genericSignature = null;
         writeDirectory = null;
         factoryUseCache = useCache;
         factoryWriteReplace = useWriteReplace;
@@ -436,6 +440,34 @@ public class ProxyFactory {
     }
 
     /**
+     * Sets the generic signature for the proxy class.
+     * <p>For example,
+     *
+     * <pre>class NullPtr&lt;T&gt; {
+     *     T get() { return null; }
+     * }
+     * </pre>
+     *
+     * <p>The following code makes a proxy for <code>NullPtr&lt;String&gt;</code>:
+     *
+     * <pre>ProxyFactory factory = new ProxyFactory();
+     * factory.setSuperclass(NullPtr.class);
+     * factory.setGenericSignature("LNullPtr&lt;Ljava/lang/String;&gt;;");
+     * NullPtr&lt;?&gt; np = (NullPtr&lt;?&gt;)factory.create(null, null);
+     *java.lang.reflect.Type[] x = ((java.lang.reflect.ParameterizedType)np.getClass().getGenericSuperclass())
+     *                                                                     .getActualTypeArguments();
+     * // x[0] == String.class
+     * </pre>
+     * 
+     * @param sig   a generic signature.
+     * @see javassist.CtClass#setGenericSignature(String)
+     * @since 3.26
+     */
+    public void setGenericSignature(String sig) {
+        genericSignature = sig;
+    }
+
+    /**
      * Generates a proxy class using the current filter.
      * The module or package where a proxy class is created
      * has to be opened to this package or the Javassist module.
@@ -472,6 +504,10 @@ public class ProxyFactory {
 
     /**
      * Generates a proxy class using the current filter.
+     * It loads a class file by the given
+     * {@code java.lang.invoke.MethodHandles.Lookup} object,
+     * which can be obtained by {@code MethodHandles.lookup()} called from
+     * somewhere in the package that the loaded class belongs to.
      *
      * @param lookup    used for loading the proxy class.
      *                  It needs an appropriate right to invoke {@code defineClass}
@@ -492,6 +528,7 @@ public class ProxyFactory {
      *                  It needs an appropriate right to invoke {@code defineClass}
      *                  for the proxy class.
      * @param filter    the filter.
+     * @see #createClass(Lookup)
      * @since 3.24
      */
     public Class<?> createClass(Lookup lookup, MethodFilter filter) {
@@ -622,7 +659,9 @@ public class ProxyFactory {
      * {@code java.lang.invoke.MethodHandles.Lookup}.
      */
     private Class<?> getClassInTheSamePackage() {
-        if (superClass != null && superClass != OBJECT_TYPE)
+        if (basename.startsWith(packageForJavaBase))       // maybe the super class is java.*
+            return this.getClass();
+        else if (superClass != null && superClass != OBJECT_TYPE)
             return superClass;
         else if (interfaces != null && interfaces.length > 0)
             return interfaces[0];
@@ -878,6 +917,11 @@ public class ProxyFactory {
         finfo4.setAccessFlags(AccessFlag.PUBLIC | AccessFlag.STATIC| AccessFlag.FINAL);
         cf.addField(finfo4);
 
+        if (genericSignature != null) {
+            SignatureAttribute sa = new SignatureAttribute(pool, genericSignature);
+            cf.addAttribute(sa);
+        }
+
         // HashMap allMethods = getMethods(superClass, interfaces);
         // int size = allMethods.size();
         makeConstructors(classname, cf, pool, classname);
@@ -919,9 +963,14 @@ public class ProxyFactory {
         if (Modifier.isFinal(superClass.getModifiers()))
             throw new RuntimeException(superName + " is final");
 
-        if (basename.startsWith("java.") || onlyPublicMethods)
-            basename = "javassist.util.proxy." + basename.replace('.', '_');
+        // Since java.base module is not opened, its proxy class should be
+        // in a different (open) module.  Otherwise, it could not be created
+        // by reflection.
+        if (basename.startsWith("java.") || basename.startsWith("jdk.") || onlyPublicMethods)
+            basename = packageForJavaBase + basename.replace('.', '_');
     }
+
+    private static final String packageForJavaBase = "javassist.util.proxy.";
 
     private void allocateClassName() {
         classname = makeProxyName(basename);

@@ -14,6 +14,7 @@ import javassist.bytecode.NestMembersAttribute;
 import javassist.expr.ExprEditor;
 import javassist.expr.Handler;
 import javassist.expr.MethodCall;
+import javassist.expr.NewExpr;
 
 @SuppressWarnings({"rawtypes","unchecked","unused"})
 public class JvstTest5 extends JvstTestRoot {
@@ -452,5 +453,125 @@ public class JvstTest5 extends JvstTestRoot {
         CtClass cc = sloader.get("test5.NestHost2$Foo");
         cc.getClassFile().compact();
         cc.toClass(test5.DefineClassCapability.class);
+    }
+
+    public void testSwitchCaseWithStringConstant() throws Exception {
+        CtClass cc = sloader.get("test5.SwitchCase");
+        cc.addMethod(CtNewMethod.make(
+                "public int run() {" +
+                "    String s = \"foobar\";\n" +
+                "    switch (s) {\n" +
+                "    case STR1: return 1;\n" +
+                "    case \"foobar\": return 2;\n" +
+                "    default: return 3; }\n" +
+                "}\n", cc));
+        cc.writeFile();
+        Object obj = make(cc.getName());
+        assertEquals(2, invoke(obj, "run"));   
+    }
+
+    public void testNestPrivateConstructor() throws Exception {
+        CtClass cc = sloader.get("test5.NestHost3$Builder");
+        cc.instrument(new ExprEditor() {
+            public void edit(NewExpr e) throws CannotCompileException {
+                String code = "$_ = $proceed($$);";
+                e.replace(code);
+            }
+        });
+        cc.writeFile();
+        try {
+            Class<?> nestHost3Class = cloader.loadClass("test5.NestHost3");
+            Object builder = nestHost3Class.getDeclaredMethod("builder").invoke(nestHost3Class);
+            Class<?> nestHost3BuilderClass = cloader.loadClass("test5.NestHost3$Builder");
+            nestHost3BuilderClass.getDeclaredMethod("build").invoke(builder);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            fail("it should be able to access the private constructor of the nest host");
+        }
+    }
+
+    public void testNestPrivateConstructor2() throws Exception {
+        CtClass cc = sloader.get("test5.NestHost4$InnerClass1");
+        cc.instrument(new ExprEditor() {
+            public void edit(NewExpr e) throws CannotCompileException {
+                String code = "$_ = $proceed($$);";
+                e.replace(code);
+            }
+        });
+        cc.writeFile();
+
+        cc = sloader.get("test5.NestHost4$InnerClass1$InnerClass5");
+        cc.instrument(new ExprEditor() {
+            public void edit(NewExpr e) throws CannotCompileException {
+                String code = "$_ = $proceed($$);";
+                e.replace(code);
+            }
+        });
+        cc.writeFile();
+        try {
+            Class<?> nestHost4Class = cloader.loadClass("test5.NestHost4");
+            nestHost4Class.getDeclaredConstructor().newInstance();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            fail("it should be able to access the private constructor of the nest host");
+        }
+    }
+
+    public void testSwitchCaseWithStringConstant2() throws Exception {
+        CtClass cc = sloader.makeClass("test5.SwitchCase2");
+        cc.addMethod(CtNewMethod.make(
+                "public int run() {" +
+                "    String s = \"foo\";\n" +
+                "    switch (s) {\n" +
+                "    case test5.SwitchCase.STR1: return 1;\n" +
+                "    case \"foobar\": return 2;\n" +
+                "    }\n" +
+                "    return 3;\n" +
+                "}\n", cc));
+        cc.writeFile();
+        Object obj = make(cc.getName());
+        assertEquals(1, invoke(obj, "run"));   
+    }
+
+    // Issue #241
+    public void testInsertBeforeAndDollarR() throws Exception {
+        CtClass cc = sloader.get(test5.InsertBeforeDollarR.class.getName());
+        CtMethod m = cc.getDeclaredMethod("foo");
+        m.insertBefore("{ if ($1 == 1) return ($r)$2; }");
+        try {
+            m.insertBefore("{ $_ = \"bar\"; }");
+            assertTrue(false);
+        } catch (CannotCompileException e) {}
+        cc.writeFile();
+        Object obj = make(cc.getName());
+        assertEquals(1, invoke(obj, "run"));
+    }
+
+    // Issue #275
+    public void testRedundantInsertAfter() throws Exception {
+        CtClass cc = sloader.get(test5.InsertAfter.class.getName());
+        CtMethod m = cc.getDeclaredMethod("foo");
+        m.insertAfter("{ $_ += 1; }", false, true);
+        CtMethod m2 = cc.getDeclaredMethod("bar");
+        m2.insertAfter("{ $_ += 1; }", true, true);
+        cc.writeFile();
+        Object obj = make(cc.getName());
+        assertEquals(71 + 22, invoke(obj, "run"));
+    }
+
+    // PR #294
+    public void testEmptyArrayInit() throws Exception {
+        CtClass cc = sloader.makeClass("test5.EmptyArrayInit");
+        CtMethod m = CtNewMethod.make("public int[] foo(){ int[] a = {}; return a; }", cc);
+        cc.addMethod(m);
+        CtMethod m2 = CtNewMethod.make("public int[] bar(){ int[] a = new int[]{}; return a; }", cc);
+        cc.addMethod(m2);
+        CtMethod m3 = CtNewMethod.make("public String[] baz(){ String[] a = { null }; return a; }", cc);
+        cc.addMethod(m3);
+        CtMethod m0 = CtNewMethod.make("public int run() { return foo().length + bar().length + baz().length; }", cc);
+        cc.addMethod(m0);
+        cc.writeFile();
+        Object obj = make(cc.getName());
+        assertEquals(1, invoke(obj, "run"));
     }
 }
