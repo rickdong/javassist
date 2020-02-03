@@ -748,23 +748,28 @@ public class SignatureAttribute extends AttributeInfo {
             return toString2(sbuf);
         }
 
-        private String toString2(StringBuilder sbuf) {
-            sbuf.append(name);
-            if (arguments != null) {
-                sbuf.append('<');
-                int n = arguments.length;
-                for (int i = 0; i < n; i++) {
-                    if (i > 0)
-                        sbuf.append(", ");
+		private String toString2(StringBuilder sbuf) {
+			return toString2(sbuf, true);
+		}
 
-                    sbuf.append(arguments[i].toString());
-                }
+		// rdong added option to omit type args
+		private String toString2(StringBuilder sbuf, boolean includeTypeArgs) {
+			sbuf.append(name);
+			if (arguments != null && includeTypeArgs) {
+				sbuf.append('<');
+				int n = arguments.length;
+				for (int i = 0; i < n; i++) {
+					if (i > 0)
+						sbuf.append(", ");
 
-                sbuf.append('>');
-            }
+					sbuf.append(arguments[i].toString());
+				}
 
-            return sbuf.toString();
-        }
+				sbuf.append('>');
+			}
+
+			return sbuf.toString();
+		}
 
         /**
          * Returns the type name in the JVM internal style.
@@ -773,12 +778,17 @@ public class SignatureAttribute extends AttributeInfo {
          */
         @Override
         public String jvmTypeName() {
+            return jvmTypeName(true);
+        }
+        
+        // rdong added option to omit type args
+        public String jvmTypeName(boolean includeTypeArgs) {
             StringBuilder sbuf = new StringBuilder();
             ClassType parent = getDeclaringClass();
             if (parent != null)
                 sbuf.append(parent.jvmTypeName()).append('$');
 
-            return toString2(sbuf);
+            return toString2(sbuf, includeTypeArgs);
         }
 
         @Override
