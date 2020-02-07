@@ -128,4 +128,39 @@ public class ProxyFactoryTest extends TestCase {
     public static class TestDefaultC2 extends TestDefaultC {
         public int baz() { return super.foo(); }
     }
+
+    public void testJava11() throws Exception {
+        ProxyFactory factory = new ProxyFactory();
+        factory.setSuperclass(java.util.HashMap.class);
+        java.util.HashMap e = (java.util.HashMap)factory.create(null, null, new MethodHandler() {
+            @Override
+            public Object invoke(Object self, Method thisMethod,
+                    Method proceed, Object[] args) throws Throwable {
+                return proceed.invoke(self, args);
+            }
+        });
+    }
+
+    public void testJava11jdk() throws Exception {
+        ProxyFactory factory = new ProxyFactory();
+        factory.setSuperclass(jdk.javadoc.doclet.StandardDoclet.class);
+        jdk.javadoc.doclet.StandardDoclet e = (jdk.javadoc.doclet.StandardDoclet)factory.create(null, null, new MethodHandler() {
+            @Override
+            public Object invoke(Object self, Method thisMethod,
+                    Method proceed, Object[] args) throws Throwable {
+                return proceed.invoke(self, args);
+            }
+        });
+    }
+
+    // Issue #263
+    public void testGenericSignature() throws Exception {
+        ProxyFactory factory = new ProxyFactory();
+        factory.setSuperclass(GenSig.class);
+        factory.setGenericSignature("Ljavassist/proxyfactory/GenSig<Ljava/lang/Integer;>;");
+        GenSig gs = (GenSig)factory.create(null, null);
+        java.lang.reflect.Type[] x = ((java.lang.reflect.ParameterizedType)gs.getClass().getGenericSuperclass())
+                                                                             .getActualTypeArguments();
+        assertEquals(Integer.class, x[0]);
+    }
 }

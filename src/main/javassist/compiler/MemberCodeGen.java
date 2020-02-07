@@ -367,7 +367,7 @@ public class MemberCodeGen extends CodeGen {
                 sizeExpr.accept(this);
         else
             if (sizeExpr == null) {
-                int s = init.length();
+                int s = init.size();
                 bytecode.addIconst(s);
             }
             else
@@ -416,7 +416,7 @@ public class MemberCodeGen extends CodeGen {
         }
 
         if (init != null) {
-            int s = init.length();
+            int s = init.size();
             ASTList list = init;
             for (int i = 0; i < s; i++) {
                 bytecode.addOpcode(DUP);
@@ -621,6 +621,18 @@ public class MemberCodeGen extends CodeGen {
                           aload0pos, found);
     }
 
+    private boolean isFromSameDeclaringClass(CtClass outer, CtClass inner) {
+        try {
+            while (outer != null) {
+                if (isEnclosing(outer, inner))
+                    return true;
+                outer = outer.getDeclaringClass();
+            }
+        }
+        catch (NotFoundException e) {}
+        return false;
+    }
+
     private void atMethodCallCore2(CtClass targetClass, String mname,
                                    boolean isStatic, boolean isSpecial,
                                    int aload0pos,
@@ -638,8 +650,11 @@ public class MemberCodeGen extends CodeGen {
                 throw new CompileError("no such constructor: " + targetClass.getName());
 
             if (declClass != thisClass && AccessFlag.isPrivate(acc)) {
-                desc = getAccessibleConstructor(desc, declClass, minfo);
-                bytecode.addOpcode(Opcode.ACONST_NULL); // the last parameter
+                if (declClass.getClassFile().getMajorVersion() < ClassFile.JAVA_11
+                        || !isFromSameDeclaringClass(declClass, thisClass)) {
+                    desc = getAccessibleConstructor(desc, declClass, minfo);
+                    bytecode.addOpcode(Opcode.ACONST_NULL); // the last parameter
+                }
             }
         }
         else if (AccessFlag.isPrivate(acc))

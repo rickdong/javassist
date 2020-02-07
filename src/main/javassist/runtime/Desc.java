@@ -34,10 +34,40 @@ public class Desc {
      */
     public static boolean useContextClassLoader = false;
 
+    private static final ThreadLocal<Boolean> USE_CONTEXT_CLASS_LOADER_LOCALLY = new ThreadLocal<Boolean>() {
+        @Override
+        protected Boolean initialValue() {
+            return false;
+        }
+    };
+
+    /**
+     * Changes so that the current thread will use the context class loader
+     * when a class is loaded.
+     * This method changes the behavior per thread unlike {@link useContextClassLoader}.
+     *
+     * @since 3.25
+     */
+    public static void setUseContextClassLoaderLocally() {
+        USE_CONTEXT_CLASS_LOADER_LOCALLY.set(true);
+    }
+
+    /**
+     * Changes so that the current thread will not use the context class loader
+     * when a class is loaded.
+     * Call this method before releasing the current thread for reuse.
+     * It invokes <code>ThreadLocal.remvoe()</code>.
+     *
+     * @since 3.25
+     */
+    public static void resetUseContextClassLoaderLocally() {
+        USE_CONTEXT_CLASS_LOADER_LOCALLY.remove();
+    }
+
     private static Class<?> getClassObject(String name)
         throws ClassNotFoundException
     {
-        if (useContextClassLoader)
+        if (useContextClassLoader || USE_CONTEXT_CLASS_LOADER_LOCALLY.get())
             return Class.forName(name, true, Thread.currentThread().getContextClassLoader());
         return Class.forName(name);
     }
