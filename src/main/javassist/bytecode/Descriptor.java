@@ -19,6 +19,7 @@ package javassist.bytecode;
 import java.util.Map;
 
 import javassist.ClassPool;
+import javassist.CtArray;
 import javassist.CtClass;
 import javassist.CtPrimitiveType;
 import javassist.NotFoundException;
@@ -546,6 +547,7 @@ public class Descriptor {
     {
         int i2;
         String name;
+        boolean primitive = false;
 
         int arrayDim = 0;
         char c = desc.charAt(i);
@@ -563,6 +565,7 @@ public class Descriptor {
             if (type == null)
                 return -1; // error
 
+            primitive = true;
             i2 = i + 1;
             if (arrayDim == 0) {
                 args[n] = type;
@@ -578,8 +581,20 @@ public class Descriptor {
 
             name = sbuf.toString();
         }
-
-        args[n] = cp.get(name);
+        
+        try {
+            args[n] = cp.get(name);
+        } catch (NotFoundException ex) {
+            /*
+             * for some reason, primitive array type
+             * in rare case cannot be resolved on app startup,
+             * in this case return one created here
+             */
+            if(!primitive){
+                throw ex;
+            }
+            args[n] = new CtArray(name, cp);
+        }
         return i2;
     }
 

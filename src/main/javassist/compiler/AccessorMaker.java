@@ -122,8 +122,7 @@ public class AccessorMaker {
         try {
             ConstPool cp = cf.getConstPool();
             ClassPool pool = clazz.getClassPool();
-            MethodInfo minfo
-                = new MethodInfo(cp, accName, accDesc);
+            MethodInfo minfo = new MethodInfo(cp, accName, accDesc);
             minfo.setAccessFlags(AccessFlag.STATIC);
             minfo.addAttribute(new SyntheticAttribute(cp));
             ExceptionsAttribute ea = orig.getExceptionsAttribute();

@@ -20,6 +20,7 @@ import javassist.util.JvmNamesCache;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import javassist.ClassPool;
 import javassist.CtClass;
@@ -621,10 +622,13 @@ public class MemberCodeGen extends CodeGen {
                           aload0pos, found);
     }
 
+    /*
+     * rdong: additional check on isEnclosing(outer, inner)
+     */
     private boolean isFromSameDeclaringClass(CtClass outer, CtClass inner) {
         try {
             while (outer != null) {
-                if (isEnclosing(outer, inner))
+                if (isEnclosing(inner, outer) || isEnclosing(outer, inner))
                     return true;
                 outer = outer.getDeclaringClass();
             }
@@ -643,34 +647,38 @@ public class MemberCodeGen extends CodeGen {
         MethodInfo minfo = found.info;
         String desc = minfo.getDescriptor();
         int acc = minfo.getAccessFlags();
+        final int javaMajorVersion = declClass.getClassFile2().getMajorVersion();
 
         if (mname.equals(MethodInfo.nameInit)) {
             isSpecial = true;
             if (declClass != targetClass)
                 throw new CompileError("no such constructor: " + targetClass.getName());
 
-            if (declClass != thisClass && AccessFlag.isPrivate(acc)) {
-                if (declClass.getClassFile().getMajorVersion() < ClassFile.JAVA_11
-                        || !isFromSameDeclaringClass(declClass, thisClass)) {
-                    desc = getAccessibleConstructor(desc, declClass, minfo);
+            if (!isSame(declClass, thisClass) && AccessFlag.isPrivate(acc)) {
+                if (javaMajorVersion < ClassFile.JAVA_11 || !isFromSameDeclaringClass(declClass, thisClass)) {
+                    desc = getAccessibleConstructor(desc, declClass, minfo, javaMajorVersion);
                     bytecode.addOpcode(Opcode.ACONST_NULL); // the last parameter
                 }
             }
         }
         else if (AccessFlag.isPrivate(acc))
-            if (declClass == thisClass)
+            if (isSame(declClass, thisClass))
                 isSpecial = true;
             else {
                 isSpecial = false;
                 isStatic = true;
                 String origDesc = desc;
-                if ((acc & AccessFlag.STATIC) == 0)
-                    desc = Descriptor.insertParameter(declClass.getName(),
-                                                      origDesc);
-
-                acc = AccessFlag.setPackage(acc) | AccessFlag.STATIC;
+                /* 
+                 * rdong https://www.baeldung.com/java-nest-based-access-control
+                 */
+                if ((acc & AccessFlag.STATIC) == 0 && javaMajorVersion < ClassFile.JAVA_11) {
+                    desc = Descriptor.insertParameter(declClass.getName(), origDesc);
+                    acc = AccessFlag.setPackage(acc) | AccessFlag.STATIC;
+                } else {
+                    isStatic = Modifier.isStatic(acc);
+                }
                 mname = getAccessiblePrivate(mname, origDesc, desc,
-                                             minfo, declClass);
+                                             minfo, declClass, javaMajorVersion);
             }
 
         boolean popTarget = false;
@@ -723,20 +731,30 @@ public class MemberCodeGen extends CodeGen {
      */
     protected String getAccessiblePrivate(String methodName, String desc,
                                           String newDesc, MethodInfo minfo,
-                                          CtClass declClass)
+                                          CtClass declClass, int javaMajorVersion)
         throws CompileError
     {
         if (isEnclosing(declClass, thisClass)) {
-            AccessorMaker maker = declClass.getAccessorMaker();
-            if (maker != null)
-                return maker.getMethodAccessor(methodName, desc, newDesc,
-                                               minfo);
+            /* 
+             * rdong https://www.baeldung.com/java-nest-based-access-control
+             */
+            if (javaMajorVersion < ClassFile.JAVA_11) {
+                AccessorMaker maker = declClass.getAccessorMaker();
+                if (maker != null)
+                    return maker.getMethodAccessor(methodName, desc, newDesc, minfo);
+            }
+            return methodName;
+        }
+        /*
+         * rdong need reverse check also
+         */
+        if (isEnclosing(thisClass, declClass)) {
+            return methodName;
         }
 
-        throw new CompileError("Method " + methodName
-                               + " is private");
+        throw new CompileError("Method " + methodName + " is private");
     }
-
+    
     /*
      * Finds (or adds if necessary) a hidden constructor if the given
      * constructor is in an enclosing class.
@@ -747,29 +765,53 @@ public class MemberCodeGen extends CodeGen {
      * @return the descriptor of the hidden constructor.
      */
     protected String getAccessibleConstructor(String desc, CtClass declClass,
-                                              MethodInfo minfo)
+                                              MethodInfo minfo, int javaMajorVersion)
         throws CompileError
     {
         if (isEnclosing(declClass, thisClass)) {
-            AccessorMaker maker = declClass.getAccessorMaker();
-            if (maker != null)
-                return maker.getConstructor(declClass, desc, minfo);
+            /* 
+             * rdong https://www.baeldung.com/java-nest-based-access-control
+             */
+            if (javaMajorVersion < ClassFile.JAVA_11) {
+                AccessorMaker maker = declClass.getAccessorMaker();
+                if (maker != null)
+                    return maker.getConstructor(declClass, desc, minfo);
+            }
+            return desc;
+        }
+        /*
+         * rdong need reverse check also
+         */
+        if (isEnclosing(thisClass, declClass)) {
+            return desc;
         }
 
-        throw new CompileError("the called constructor is private in "
-                               + declClass.getName());
+        throw new CompileError(
+                "the called constructor " + minfo.getDescriptor() + " from " + thisClass.getName() + " is private in "
+                        + declClass.getName());
     }
 
+    /*
+     * rdong: use isSame instead of ==. When under gc presure , ctClass cache will be cleared and
+     * new one will be created, identity equality check won't work
+     */
     private boolean isEnclosing(CtClass outer, CtClass inner) {
         try {
             while (inner != null) {
                 inner = inner.getDeclaringClass();
-                if (inner == outer)
+                if (inner == null) {
+                    return false;
+                }
+                if (isSame(inner, outer))
                     return true;
             }
         }
         catch (NotFoundException e) {}
         return false;   
+    }
+    
+    private boolean isSame(CtClass a, CtClass b) {
+        return Objects.equals(a.getName(), b.getName());
     }
 
     public int getMethodArgsLength(ASTList args) {
@@ -982,7 +1024,7 @@ public class MemberCodeGen extends CodeGen {
         throws CompileError
     {
         if (AccessFlag.isPrivate(finfo.getAccessFlags())
-                && f.getDeclaringClass() != thisClass) {
+                && !isSame(f.getDeclaringClass(), thisClass)) {
             CtClass declClass = f.getDeclaringClass();
             if (isEnclosing(declClass, thisClass)) {
                 AccessorMaker maker = declClass.getAccessorMaker();

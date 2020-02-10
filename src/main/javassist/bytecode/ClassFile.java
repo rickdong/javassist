@@ -784,6 +784,19 @@ public final class ClassFile implements AttributeChangeListener {
         return fields.get(name);
     }
 
+    /**
+     * Returns all the fields declared in the class.
+     * 
+     * @return a list of <code>FieldInfo</code>.
+     * @see FieldInfo
+     */
+    public List<FieldInfo> getFields() {
+        return fields2;
+    }
+    
+    public List<MethodInfo> getMethods() {
+        return methods2;
+    }
     
     public List<MethodInfo> getMethods(String name){
         List<MethodInfo> ret = methods.get(name);

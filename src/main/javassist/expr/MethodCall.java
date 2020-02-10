@@ -185,6 +185,13 @@ public class MethodCall extends Expr {
     */
 
     public static interface ReplacementBytecodeCallback {
+        /**
+         * @param cf class file in which the call is made from
+         * @param opCode op code
+         * @param classname the class in which the called method is defined
+         * @param methodname the name of the called method
+         * @param signature the called method signature
+         */
         Bytecode getBytecode(ClassFile cf, int opCode, String classname, String methodname,
                 String signature);
     }
@@ -302,9 +309,11 @@ public class MethodCall extends Expr {
 
             replace0(pos, bytecode, opcodeSize);
         }
-        catch (CompileError e) { throw new CannotCompileException(e); }
-        catch (NotFoundException e) { throw new CannotCompileException(e); }
-        catch (BadBytecode e) {
+        catch (CompileError e) {
+            throw new CannotCompileException(e);
+        } catch (NotFoundException e) {
+            throw new CannotCompileException(e);
+        } catch (BadBytecode e) {
             throw new CannotCompileException("broken method");
         }
     }
