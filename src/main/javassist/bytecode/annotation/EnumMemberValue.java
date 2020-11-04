@@ -110,7 +110,7 @@ public class EnumMemberValue extends MemberValue {
 
     @Override
     public String toString() {
-        return getType() + "." + getValue();
+        return new StringBuilder(getType()).append(".").append(getValue()).toString();
     }
 
     /**

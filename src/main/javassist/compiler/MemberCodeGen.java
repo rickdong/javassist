@@ -348,8 +348,7 @@ public class MemberCodeGen extends CodeGen {
         if (size.length() > 1) {
             if (init != null)
                 throw new CompileError(
-                        "sorry, multi-dimensional array initializer " +
-                        "for new is not supported");
+                        "sorry, multi-dimensional array initializer for new is not supported");
 
             atMultiNewArray(type, classname, size);
             return;
@@ -612,8 +611,7 @@ public class MemberCodeGen extends CodeGen {
             if (mname.equals(MethodInfo.nameInit))
                 msg = "constructor not found";
             else
-                msg = "Method " + mname + " not found in "
-                    + targetClass.getName();
+                msg = String.format("Method %s not found in %s", mname, targetClass.getName());
 
             throw new CompileError(msg);
         }
@@ -652,7 +650,7 @@ public class MemberCodeGen extends CodeGen {
         if (mname.equals(MethodInfo.nameInit)) {
             isSpecial = true;
             if (declClass != targetClass)
-                throw new CompileError("no such constructor: " + targetClass.getName());
+                throw new CompileError("no such constructor: ", targetClass.getName());
 
             if (!isSame(declClass, thisClass) && AccessFlag.isPrivate(acc)) {
                 if (javaMajorVersion < ClassFile.JAVA_11 || !isFromSameDeclaringClass(declClass, thisClass)) {
@@ -752,7 +750,7 @@ public class MemberCodeGen extends CodeGen {
             return methodName;
         }
 
-        throw new CompileError("Method " + methodName + " is private");
+        throw new CompileError(String.format("Method %s is private",  methodName));
     }
     
     /*
@@ -787,8 +785,10 @@ public class MemberCodeGen extends CodeGen {
         }
 
         throw new CompileError(
-                "the called constructor " + minfo.getDescriptor() + " from " + thisClass.getName() + " is private in "
-                        + declClass.getName());
+                String.format("the called constructor %s from %s is private in %s",
+                        minfo.getDescriptor(),
+                        thisClass.getName(),
+                        declClass.getName()));
     }
 
     /*
@@ -796,6 +796,20 @@ public class MemberCodeGen extends CodeGen {
      * new one will be created, identity equality check won't work
      */
     private boolean isEnclosing(CtClass outer, CtClass inner) {
+        do {
+            try {
+                // outer itself can be an inner class
+                // so need to traverse to the top
+                CtClass outerDeclCls = outer.getDeclaringClass();
+                if (outerDeclCls == null) {
+                    break;
+                }
+                outer = outerDeclCls;
+            } catch (NotFoundException e) {
+                break;
+            }
+        }
+        while (true);
         try {
             while (inner != null) {
                 inner = inner.getDeclaringClass();
@@ -1031,8 +1045,7 @@ public class MemberCodeGen extends CodeGen {
                 if (maker != null)
                     return maker;
             }
-            throw new CompileError("Field " + f.getName() + " in "
-                                   + declClass.getName() + " is private.");
+            throw new CompileError(String.format("Field %s in %s is private",  f.getName() , declClass.getName()));
         }
 
         return null;    // accessible field
@@ -1128,8 +1141,7 @@ public class MemberCodeGen extends CodeGen {
             boolean is_static = Modifier.isStatic(f.getModifiers());
             if (!is_static)
                 if (inStaticMethod)
-                    throw new CompileError(
-                                "not available in a static method: " + name);
+                    throw new CompileError("not available in a static method: ", name);
                 else
                     bytecode.addAload(0);       // this
 

@@ -127,11 +127,15 @@ public class MemberResolver implements TokenId {
             }
         }
 
-        if (onlyExact)
-            maybe = null;
-        else
-            if (maybe != null)
-                return maybe;
+        /*
+         * rdong - commented out as shouldn't have returned a maybe before even trying searching the
+         * parents
+         */
+//        if (onlyExact)
+//            maybe = null;
+//        else
+//            if (maybe != null)
+//                return maybe;
 
         int mod = clazz.getModifiers();
         boolean isIntf = Modifier.isInterface(mod);
@@ -172,7 +176,11 @@ public class MemberResolver implements TokenId {
         }
         catch (NotFoundException e) {}
 
-        return maybe;
+        // rdong - return maybe if the whole hierachy is searched and nothing is found
+        if (onlyExact)
+            return null;
+        else
+            return maybe;
     }
 
     private static final int YES = 0;
@@ -317,7 +325,7 @@ public class MemberResolver implements TokenId {
             return cc.getField(fieldName.get());
         }
         catch (NotFoundException e) {}
-        throw new CompileError("no such field: " + fieldName.get());
+        throw new CompileError("no such field: ", fieldName.get());
     }
 
     public CtClass lookupClassByName(ASTList name) throws CompileError {
@@ -406,7 +414,7 @@ public class MemberResolver implements TokenId {
         ConcurrentMap<String, String> cache = getInvalidNames();
         String found = cache.get(name);
         if (found == INVALID)
-            throw new CompileError("no such class: " + name);
+            throw new CompileError("no such class: ", name);
         else if (found != null)
             try {
                 return classPool.get(found);
@@ -455,16 +463,19 @@ public class MemberResolver implements TokenId {
         throws CompileError
     {
         if (orgName.indexOf('.') < 0) {
+            final String _orgName = new StringBuilder(".").append(orgName).toString();
+            final StringBuilder sb = new StringBuilder(_orgName);
             Iterator<String> it = classPool.getImportedPackages();
             while (it.hasNext()) {
+                sb.delete(0, sb.length() - _orgName.length());
                 String pac = it.next();
-                String fqName = pac.replaceAll("\\.$","") + "." + orgName;
+                String fqName = sb.insert(0, pac.replaceAll("\\.$","")).toString();
                 try {
                     return classPool.get(fqName);
                 }
                 catch (NotFoundException e) {
                     try {
-                        if (pac.endsWith("." + orgName))
+                        if (pac.endsWith(_orgName))
                             return classPool.get(pac);
                     }
                     catch (NotFoundException e2) {}
@@ -473,7 +484,7 @@ public class MemberResolver implements TokenId {
         }
 
         getInvalidNames().put(orgName, INVALID);
-        throw new CompileError("no such class: " + orgName);
+        throw new CompileError("no such class: ", orgName);
     }
 
     private CtClass lookupClass0(String classname, boolean notCheckInner)
@@ -531,7 +542,7 @@ public class MemberResolver implements TokenId {
         }
         catch (NotFoundException e) {}
         throw new CompileError("cannot find the super class of "
-                               + c.getName());
+                               , c.getName());
     }
 
     public static CtClass getSuperInterface(CtClass c, String interfaceName)
@@ -543,8 +554,8 @@ public class MemberResolver implements TokenId {
                 if (intfs[i].getName().equals(interfaceName))
                     return intfs[i];
         } catch (NotFoundException e) {}
-        throw new CompileError("cannot find the super interface " + interfaceName
-                               + " of " + c.getName());
+        throw new CompileError(String.format("cannot find the super interface %s of %s", interfaceName
+                               , c.getName()));
     }
 
     public static int descToType(char c) throws CompileError {

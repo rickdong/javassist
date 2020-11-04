@@ -264,7 +264,7 @@ public class FieldAccess extends Expr {
         {
             if (args != null && !gen.isParamListName(args))
                 throw new CompileError(Javac.proceedName
-                        + "() cannot take a parameter for field reading");
+                        , "() cannot take a parameter for field reading");
 
             int stack;
             if (isStatic(opcode))
@@ -314,8 +314,8 @@ public class FieldAccess extends Expr {
         {
             if (gen.getMethodArgsLength(args) != 1)
                 throw new CompileError(Javac.proceedName
-                        + "() cannot take more than one parameter "
-                        + "for field writing");
+                        , "() cannot take more than one parameter "
+                        , "for field writing");
 
             int stack;
             if (isStatic(opcode))

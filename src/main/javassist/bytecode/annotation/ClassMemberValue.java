@@ -124,7 +124,7 @@ public class ClassMemberValue extends MemberValue {
      */
     @Override
     public String toString() {
-        return getValue().replace('$', '.') + ".class";
+        return new StringBuilder(getValue().replace('$', '.')).append(".class").toString();
     }
 
     /**

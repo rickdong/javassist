@@ -276,7 +276,7 @@ public class NewArray extends Expr {
             int num = gen.getMethodArgsLength(args);
             if (num != dimension)
                 throw new CompileError(Javac.proceedName
-                        + "() with a wrong number of parameters");
+                        , "() with a wrong number of parameters");
 
             gen.atMethodArgs(args, new int[num],
                              new int[num], new String[num]);

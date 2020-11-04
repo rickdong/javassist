@@ -172,8 +172,8 @@ public class Instanceof extends Expr {
         {
             if (gen.getMethodArgsLength(args) != 1)
                 throw new CompileError(Javac.proceedName
-                        + "() cannot take more than one parameter "
-                        + "for instanceof");
+                        , "() cannot take more than one parameter "
+                        , "for instanceof");
 
             gen.atMethodArgs(args, new int[1], new int[1], new String[1]);
             bytecode.addOpcode(Opcode.INSTANCEOF);

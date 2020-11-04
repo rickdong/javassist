@@ -384,8 +384,7 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
         else {
             // LABEL, SWITCH label stament might be null?.
             hasReturned = false;
-            throw new CompileError(
-                "sorry, not supported statement: TokenId " + op);
+            throw new CompileError("sorry, not supported statement: TokenId ", op);
         }
     }
 
@@ -843,7 +842,7 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
         if (expr == null)
             msg = "incompatible type for assignment";
         else
-            msg = "incompatible type for " + expr.getName();
+            msg = new StringBuilder("incompatible type for ").append(expr.getName()).toString();
 
         throw new CompileError(msg);
     }
@@ -1344,7 +1343,7 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
     }
 
     protected static void badTypes(Expr expr) throws CompileError {
-        throw new CompileError("invalid types for " + expr.getName());
+        throw new CompileError("invalid types for ", expr.getName());
     }
 
     private static final int P_DOUBLE = 0;
@@ -1620,7 +1619,7 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
     }
 
     protected static void badType(Expr expr) throws CompileError {
-        throw new CompileError("invalid type for " + expr.getName());
+        throw new CompileError("invalid type for ", expr.getName());
     }
 
     @Override
@@ -1985,8 +1984,7 @@ public abstract class CodeGen extends Visitor implements Opcode, TokenId {
         case THIS :
         case SUPER :
             if (inStaticMethod)
-                throw new CompileError("not-available: "
-                                       + (token == THIS ? "this" : "super"));
+                throw new CompileError("not-available: ", token == THIS ? "this" : "super");
 
             bytecode.addAload(0);
             exprType = CLASS;

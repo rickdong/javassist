@@ -768,13 +768,10 @@ public class TypeChecker extends Visitor implements Opcode, TokenId {
         if (found == null) {
             String clazz = targetClass.getName();
             String signature = argTypesToString(types, dims, cnames);
-            String msg;
             if (mname.equals(MethodInfo.nameInit))
-                msg = "cannot find constructor " + clazz + signature;
+                throw new CompileError("cannot find constructor ", clazz, signature);
             else
-                msg = mname + signature +  " not found in " + clazz;
-
-            throw new CompileError(msg);
+                throw new CompileError(mname, signature, " not found in ", clazz);
         }
 
         String desc = found.info.getDescriptor();

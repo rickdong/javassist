@@ -115,14 +115,14 @@ public class JvstCodeGen extends MemberCodeGen {
         }
         else if (name.equals(dollarTypeName)) {
             if (dollarType == null)
-                throw new CompileError(dollarTypeName + " is not available");
+                throw new CompileError(dollarTypeName, " is not available");
 
             bytecode.addLdc(Descriptor.of(dollarType));
             callGetType("getType");
         }
         else if (name.equals(clazzName)) {
             if (param0Type == null)
-                throw new CompileError(clazzName + " is not available");
+                throw new CompileError(clazzName, " is not available");
 
             bytecode.addLdc(param0Type);
             callGetType("getClazz");
@@ -146,11 +146,11 @@ public class JvstCodeGen extends MemberCodeGen {
         if (left instanceof Member
             && ((Member)left).get().equals(paramArrayName)) {
             if (op != '=')
-                throw new CompileError("bad operator for " + paramArrayName);
+                throw new CompileError("bad operator for ", paramArrayName);
 
             right.accept(this);
             if (arrayDim != 1 || exprType != CLASS)
-                throw new CompileError("invalid type for " + paramArrayName);
+                throw new CompileError("invalid type for ", paramArrayName);
 
             atAssignParamList(paramTypeList, bytecode);
             if (!doDup)
@@ -271,13 +271,13 @@ public class JvstCodeGen extends MemberCodeGen {
     protected void atCflow(ASTList cname) throws CompileError {
         StringBuilder sbuf = new StringBuilder();
         if (cname == null || cname.tail() != null)
-            throw new CompileError("bad " + cflowName);
+            throw new CompileError("bad ", cflowName);
 
         makeCflowName(sbuf, cname.head());
         String name = sbuf.toString();
         Object[] names = resolver.getClassPool().lookupCflow(name);
         if (names == null)
-            throw new CompileError("no such " + cflowName + ": " + name);
+            throw new CompileError("no such ", cflowName, ": ", name);
 
         bytecode.addGetstatic((String)names[0], (String)names[1],
                               "Ljavassist/runtime/Cflow;");
@@ -310,7 +310,7 @@ public class JvstCodeGen extends MemberCodeGen {
             }
         }
 
-        throw new CompileError("bad " + cflowName);
+        throw new CompileError("bad ", cflowName);
     }
 
     /* To support $$.  ($$) is equivalent to ($1, ..., $n).
@@ -687,7 +687,7 @@ public class JvstCodeGen extends MemberCodeGen {
         }
 
         if (exprType == VOID)
-            throw new CompileError("invalid type for " + returnCastName);
+            throw new CompileError("invalid type for ", returnCastName);
 
         if (type instanceof CtPrimitiveType) {
             CtPrimitiveType pt = (CtPrimitiveType)type;
@@ -723,7 +723,7 @@ public class JvstCodeGen extends MemberCodeGen {
                 setType(type.getComponentType(), dim + 1);
             }
             catch (NotFoundException e) {
-                throw new CompileError("undefined type: " + type.getName());
+                throw new CompileError("undefined type: ", type.getName());
             }
         else {
             exprType = CLASS;

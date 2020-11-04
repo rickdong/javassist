@@ -1202,7 +1202,7 @@ public final class Parser implements TokenId {
             break;
         default :
             throw new CompileError("invalid builtin type: "
-                                   + builtinType);
+                                   , builtinType);
         }
 
         return Expr.make(MEMBER, new Symbol(cname), new Member("TYPE"));

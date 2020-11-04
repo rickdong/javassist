@@ -31,6 +31,22 @@ public class CompileError extends NoStackTraceException {
         lex = l;
     }
 
+    public CompileError(StringBuilder s) {
+        this(s.toString());
+    }
+    
+    public CompileError(String s, Object... others) {
+        this(concat(s, others));
+    }
+    
+    private static String concat(String first, Object... others) {
+        StringBuilder sb = new StringBuilder(first);
+        for (Object v : others) {
+            sb.append(v);
+        }
+        return sb.toString();
+    }
+    
     public CompileError(String s) {
         reason = s;
         lex = null;
@@ -41,7 +57,7 @@ public class CompileError extends NoStackTraceException {
     }
 
     public CompileError(NotFoundException e) {
-        this("cannot find " + e.getMessage());
+        this(concat("cannot find ", e.getMessage()));
     }
 
     public Lex getLex() { return lex; }
@@ -53,6 +69,6 @@ public class CompileError extends NoStackTraceException {
 
     @Override
     public String toString() {
-        return "compile error: " + reason;
+        return new StringBuilder("compile error: ").append(reason).toString();
     }
 }
